@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The pitfall lab — Raghavan Parthasarathy</title>
+<meta name="description" content="Fourteen interactive explorers showing what misclassification, attrition, immortal time, clustering, secular trend and repeated testing do to a study's answer.">
+<meta name="author" content="Raghavan Parthasarathy">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<div id="chrome"></div>
+<div class="tabbar"><div class="tabbar-in" id="tabbar"></div></div>
+<div class="shell" id="panes"></div>
+<div id="author"></div>
+<script src="assets/core.js"></script>
+<script src="assets/explorers.js"></script>
+<script>
+var INTRO={id:'lab-intro',nav:'How to use the lab',title:'The pitfall lab',html:
+`<p>Every explorer on this site, gathered in one place and grouped by the kind of damage each mechanism does. They are here because a list of pitfalls is something people nod at and forget, whereas a slider that turns a real effect into nothing is harder to unsee.</p>
+<h3>Three ways to use these</h3>
+<table>
+<tr><th>Use</th><th>How</th></tr>
+<tr><td><b>Before you design</b></td><td>Find the pitfall your design is most exposed to and drag it to the worst value you think plausible. If the answer survives, you have a study. If it does not, you have found out cheaply.</td></tr>
+<tr><td><b>While you write the protocol</b></td><td>Several of these give you the sentence you need. "A 20% loss of the true contrast to non-adherence would raise the requirement from 313 to 489 per arm" is a far stronger protocol line than "we allowed for non-adherence".</td></tr>
+<tr><td><b>When you read someone else's study</b></td><td>Set the sliders to what their methods section admits to and see what their reported effect is compatible with.</td></tr>
+</table>
+<div class="note bad"><b>The distinction that matters most.</b> Some of what follows is a <b>sample size</b> problem, curable by recruiting more people: sparse cells, dilution from non-adherence, clustering, too short a pre-period. The rest is <b>bias</b>, and a larger study only buys you a tighter confidence interval around the wrong number. Immortal time, differential attrition and omitted secular trend are all in the second group. Each explorer says which it is.</div>
+<div class="note">These are teaching models. Each is deliberately simple, each states its assumptions in the footnote below the chart, and none is a substitute for simulating your own design.</div>`};
+
+var TABS=[
+ {key:'meas',label:'Measurement & misclassification',sections:['lab-intro']},
+ {key:'sel',label:'Selection & time',sections:[]},
+ {key:'struct',label:'Structure & clustering',sections:[]},
+ {key:'prec',label:'Precision & power',sections:[]},
+ {key:'test',label:'Testing & analysis',sections:[]}
+];
+
+/* re-tag every explorer into a lab tab, cloning so ids stay unique */
+var LAB={misclass:'meas', sparse:'meas', orrr:'meas',
+         attrition:'sel', immortal:'sel', matching:'sel',
+         deff:'struct', swtrend:'struct', swlag:'struct', itspre:'struct',
+         precision:'prec', dilute:'prec', nimargin:'prec',
+         interim:'test'};
+var MYXP=[];
+EXPLORERS.forEach(function(x){
+  if(LAB[x.id]===undefined) return;
+  var c={}; Object.keys(x).forEach(function(k){c[k]=x[k];});
+  c.tab=LAB[x.id];
+  c.sliders=x.sliders.map(function(s){var o={};Object.keys(s).forEach(function(k){o[k]=s[k];});return o;});
+  c._v=null;
+  MYXP.push(c);
+});
+
+document.getElementById('chrome').innerHTML=chrome('lab');
+document.getElementById('author').innerHTML=authorBlock();
+buildTabs(TABS,[INTRO],MYXP);
+initChrome();
+var d=document.getElementById('depthBtn'); if(d) d.style.display='none';
+MYXP.forEach(function(x){XP.add(x);});
+XP.renderAll();
+</script>
+</body></html>

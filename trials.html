@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clinical trial designs & sample size — Raghavan Parthasarathy</title>
+<meta name="description" content="Parallel, cluster, stepped wedge, crossover, non-inferiority, adaptive and platform trials: design, sample size, analysis plans, case studies and interactive explorers.">
+<meta name="author" content="Raghavan Parthasarathy">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<div id="chrome"></div>
+<div class="tabbar"><div class="tabbar-in" id="tabbar"></div></div>
+<div class="shell" id="panes"></div>
+<div id="author"></div>
+<script src="assets/core.js"></script>
+<script src="assets/explorers.js"></script>
+<script>
+/* =========================================================
+   TRIALS — reference registry
+   checked:true = bibliographic details verified against PubMed,
+   the publisher or an indexing service during the build.
+   No page or equation numbers are supplied for books.
+   ========================================================= */
+var REFS={
+
+/* --- foundations --- */
+mrc1948:{a:"Medical Research Council",y:1948,t:"Streptomycin treatment of pulmonary tuberculosis: a Medical Research Council investigation",s:"British Medical Journal 1948;2(4582):769–782",checked:true,link:"https://pmc.ncbi.nlm.nih.gov/articles/PMC2091872/",
+ why:"The first properly randomised controlled trial in the English-language medical literature, planned by the Streptomycin in Tuberculosis Trials Committee with Austin Bradford Hill as its statistician. Free full text at PubMed Central — read the allocation section, it is two paragraphs and it founded modern trial methodology."},
+neymanpearson1933:{a:"Neyman J, Pearson ES",y:1933,t:"On the problem of the most efficient tests of statistical hypotheses",s:"Philosophical Transactions of the Royal Society of London, Series A 1933;231:289–337",checked:false,link:"https://royalsocietypublishing.org/",
+ why:"Where α and β came from as a formal pair. Every sample size formula on this site applies this framework. Details not machine-verified in this build."},
+hill1965:{a:"Hill AB",y:1965,t:"The environment and disease: association or causation?",s:"Proceedings of the Royal Society of Medicine 1965;58(5):295–300",checked:false,link:"https://pubmed.ncbi.nlm.nih.gov/14283879/",
+ why:"Not a trials paper, but by the same author, and the clearest statement of why randomisation matters: it is the one device that addresses all the criteria at once. Details not machine-verified in this build."},
+ichE9:{a:"International Council for Harmonisation",y:1998,t:"ICH E9: Statistical principles for clinical trials",s:"ICH Harmonised Tripartite Guideline",checked:false,link:"https://database.ich.org/sites/default/files/E9_Guideline.pdf",
+ why:"The regulatory baseline. Estimands, analysis sets, multiplicity, interim analyses. Free. The 2019 addendum ICH E9(R1) on estimands is the more important document for modern protocols. Details not machine-verified in this build."},
+consort2010:{a:"Schulz KF, Altman DG, Moher D, for the CONSORT Group",y:2010,t:"CONSORT 2010 Statement: updated guidelines for reporting parallel group randomised trials",s:"BMJ 2010;340:c332",checked:false,link:"https://www.equator-network.org/reporting-guidelines/consort/",
+ why:"Item 7a asks how sample size was determined. Read the checklist backwards as a design document: anything you must report, you must first decide. Details not machine-verified in this build."},
+spirit2013:{a:"Chan AW, Tetzlaff JM, Altman DG, et al.",y:2013,t:"SPIRIT 2013 Statement: defining standard protocol items for clinical trials",s:"Annals of Internal Medicine 2013;158(3):200–207",checked:false,link:"https://www.spirit-statement.org/",
+ why:"The protocol counterpart to CONSORT. Details not machine-verified in this build."},
+schulz2005:{a:"Schulz KF, Grimes DA",y:2005,t:"Sample size calculations in randomised trials: mandatory and mystical",s:"The Lancet 2005;365(9467):1348–1353",checked:false,link:"https://pubmed.ncbi.nlm.nih.gov/15823387/",
+ why:"On how routinely the reported calculation is reverse-engineered from the sample that was affordable. Details not machine-verified in this build."},
+
+/* --- core sample size methods --- */
+lachin1981:{a:"Lachin JM",y:1981,t:"Introduction to sample size determination and power analysis for clinical trials",s:"Controlled Clinical Trials 1981;2(2):93–113",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/7273794/",
+ why:"A unified derivation that covers most two-group cases. If you want one paper that shows where all the formulae come from rather than just what they are, this is it."},
+fleiss1980:{a:"Fleiss JL, Tytun A, Ury HK",y:1980,t:"A simple approximation for calculating sample sizes for comparing independent proportions",s:"Biometrics 1980;36(2):343–346",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/26625475/",
+ why:"The continuity-corrected two-proportion formula generalised to unequal allocation. The default engine behind most binary-outcome trial calculations."},
+casagrande1978:{a:"Casagrande JT, Pike MC, Smith PG",y:1978,t:"An improved approximate formula for calculating sample sizes for comparing two binomial distributions",s:"Biometrics 1978;34(3):483–486",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/719120/",
+ why:"The equal-allocation continuity correction Fleiss and colleagues then generalised."},
+schoenfeld1983:{a:"Schoenfeld DA",y:1983,t:"Sample-size formula for the proportional-hazards regression model",s:"Biometrics 1983;39(2):499–503",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/6354290/",
+ why:"Gives the number of EVENTS, not patients — the distinction most survival protocols get wrong. Handles unequal allocation naturally and underlies most software defaults."},
+freedman1982:{a:"Freedman LS",y:1982,t:"Tables of the number of patients required in clinical trials using the logrank test",s:"Statistics in Medicine 1982;1(2):121–129",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/7187087/",
+ why:"The alternative events formula, slightly more conservative when the hazard ratio is far from 1. When two calculators disagree on a survival trial, this is usually why."},
+lakatos1988:{a:"Lakatos E",y:1988,t:"Sample sizes based on the logrank statistic in complex clinical trials",s:"Biometrics 1988;44(1):229–241",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/3358991/",
+ why:"What to use when hazards are non-proportional, accrual is staggered, or there is meaningful drop-in and drop-out — that is, in almost every real trial."},
+blackwelder1982:{a:"Blackwelder WC",y:1982,t:"'Proving the null hypothesis' in clinical trials",s:"Controlled Clinical Trials 1982;3(4):345–353",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/7160191/",
+ why:"The paper that reframed equivalence testing and gave non-inferiority its logic: the null becomes 'the new treatment is worse by at least δ', and rejecting it is the finding."},
+connor1987:{a:"Connor RJ",y:1987,t:"Sample size for testing differences in proportions for the paired-sample design",s:"Biometrics 1987;43(1):207–211",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/3567305/",
+ why:"McNemar sample size — needed for crossover trials with binary outcomes and for matched designs."},
+hayes1999:{a:"Hayes RJ, Bennett S",y:1999,t:"Simple sample size calculation for cluster-randomized trials",s:"International Journal of Epidemiology 1999;28(2):319–326",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/10342698/",
+ why:"The coefficient-of-variation approach, with worked examples from a bednet trial in Kenya and an STD treatment trial in Tanzania. Gives clusters per arm directly, which is the quantity that constrains a real trial."},
+hayes2017:{a:"Hayes RJ, Moulton LH",y:2017,t:"Cluster randomised trials",s:"2nd edition. Chapman & Hall/CRC, Boca Raton",checked:false,link:"https://www.routledge.com/",
+ why:"The book-length treatment, including matched and stratified designs. Locator not supplied."},
+donner2000:{a:"Donner A, Klar N",y:2000,t:"Design and analysis of cluster randomization trials in health research",s:"Arnold, London",checked:false,link:"",
+ why:"The design-effect and intracluster-correlation route. Locator not supplied."},
+
+/* --- stepped wedge and newer designs --- */
+hussey2007:{a:"Hussey MA, Hughes JP",y:2007,t:"Design and analysis of stepped wedge cluster randomized trials",s:"Contemporary Clinical Trials 2007;28(2):182–191",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/16829207/",
+ why:"The foundational paper. Sets out the linear mixed model with cluster random effects and fixed time effects, derives the variance of the treatment-effect estimator, and shows why the design gains efficiency from within-cluster comparison. Everything modern on stepped wedge extends this."},
+woertman2013:{a:"Woertman W, de Hoop E, Moerbeek M, Zuidema SU, Gerritsen DL, Teerenstra S",y:2013,t:"Stepped wedge designs could reduce the required sample size in cluster randomized trials",s:"Journal of Clinical Epidemiology 2013;66(7):752–758",checked:false,link:"https://pubmed.ncbi.nlm.nih.gov/23523551/",
+ why:"Source of the stepped-wedge design effect that lets you convert a parallel cluster trial size into a stepped-wedge one. Widely used and widely misapplied — it assumes the Hussey–Hughes model exactly. Details not machine-verified in this build."},
+hemming2015:{a:"Hemming K, Haines TP, Chilton PJ, Girling AJ, Lilford RJ",y:2015,t:"The stepped wedge cluster randomised trial: rationale, design, analysis, and reporting",s:"BMJ 2015;350:h391",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/25662947/",
+ why:"The best entry point: free full text, plain language, and honest about when the design is the right choice and when it is being used to dodge an ethical objection that should have been faced directly."},
+hemmingConsort:{a:"Hemming K, Taljaard M, McKenzie JE, et al.",y:2018,t:"Reporting of stepped wedge cluster randomised trials: extension of the CONSORT 2010 statement with explanation and elaboration",s:"BMJ 2018;363:k1614",checked:false,link:"https://www.equator-network.org/",
+ why:"The reporting standard. Read it while designing, not while writing up. Details not machine-verified in this build."},
+copas2015:{a:"Copas AJ, Lewis JJ, Thompson JA, Davey C, Baio G, Hargreaves JR",y:2015,t:"Designing a stepped wedge trial: three main designs, carry-over effects and randomisation approaches",s:"Trials 2015;16:352",checked:false,link:"https://trialsjournal.biomedcentral.com/",
+ why:"Distinguishes the cross-sectional, closed-cohort and open-cohort stepped wedge, which have different correlation structures and therefore different sample sizes. Most protocols never say which they are. Details not machine-verified in this build."},
+hughes2015:{a:"Hughes JP, Granston TS, Heagerty PJ",y:2015,t:"Current issues in the design and analysis of stepped wedge trials",s:"Contemporary Clinical Trials 2015;45:55–60",checked:false,link:"https://pubmed.ncbi.nlm.nih.gov/26247569/",
+ why:"The authors' own account of what the 2007 model gets wrong — chiefly the assumption that the treatment effect is immediate and constant. Details not machine-verified in this build."},
+kenny2022:{a:"Kenny A, Voldal EC, Xia F, Heagerty PJ, Hughes JP",y:2022,t:"Analysis of stepped wedge cluster randomized trials in the presence of a time-varying treatment effect",s:"Statistics in Medicine 2022;41(22):4311–4339",checked:false,link:"https://pubmed.ncbi.nlm.nih.gov/35774016/",
+ why:"Shows that if the effect ramps up with exposure time and you fit the constant-effect model, the estimate is biased — sometimes severely, and in a direction that is not obvious. The most important recent result for anyone running a stepped wedge. Details not machine-verified in this build."},
+li2021:{a:"Li F, Hughes JP, Hemming K, Taljaard M, Melnick ER, Heagerty PJ",y:2021,t:"Mixed-effects models for the design and analysis of stepped wedge cluster randomized trials: an overview",s:"Statistical Methods in Medical Research 2021;30(2):612–639",checked:false,link:"https://pubmed.ncbi.nlm.nih.gov/32631142/",
+ why:"The modern reference on correlation structures: exchangeable, nested exchangeable, exponential decay. Which you assume changes the sample size materially. Details not machine-verified in this build."},
+pocock1977:{a:"Pocock SJ",y:1977,t:"Group sequential methods in the design and analysis of clinical trials",s:"Biometrika 1977;64(2):191–199",checked:false,link:"https://academic.oup.com/biomet",
+ why:"Constant nominal significance level at every interim look. Easier to stop early, at the price of a larger maximum sample size. Details not machine-verified in this build."},
+obrien1979:{a:"O'Brien PC, Fleming TR",y:1979,t:"A multiple testing procedure for clinical trials",s:"Biometrics 1979;35(3):549–556",checked:false,link:"https://pubmed.ncbi.nlm.nih.gov/497341/",
+ why:"Very stringent early, close to nominal at the end. The usual default in confirmatory trials because the maximum sample size is barely inflated. Details not machine-verified in this build."},
+landemets1983:{a:"Lan KKG, DeMets DL",y:1983,t:"Discrete sequential boundaries for clinical trials",s:"Biometrika 1983;70(3):659–663",checked:false,link:"https://academic.oup.com/biomet",
+ why:"The alpha-spending function, which frees you from fixing the number and timing of interim looks in advance. Details not machine-verified in this build."},
+royston2003:{a:"Royston P, Parmar MKB, Qian W",y:2003,t:"Novel designs for multi-arm clinical trials with survival outcomes with an application in ovarian cancer",s:"Statistics in Medicine 2003;22(14):2239–2256",checked:false,link:"https://pubmed.ncbi.nlm.nih.gov/12854091/",
+ why:"The multi-arm multi-stage (MAMS) design — several experimental arms against a shared control, with arms dropped at interim stages. The template for STAMPEDE and RECOVERY. Details not machine-verified in this build."},
+murphy2005:{a:"Murphy SA",y:2005,t:"An experimental design for the development of adaptive treatment strategies",s:"Statistics in Medicine 2005;24(10):1455–1481",checked:false,link:"https://pubmed.ncbi.nlm.nih.gov/15586395/",
+ why:"The SMART design: randomise, observe response, re-randomise non-responders. Built for sequencing decisions rather than single comparisons. Details not machine-verified in this build."},
+hemming2020plat:{a:"Angus DC, Alexander BM, Berry S, et al.",y:2019,t:"Adaptive platform trials: definition, design, conduct and reporting considerations",s:"Nature Reviews Drug Discovery 2019;18(10):797–807",checked:false,link:"https://pubmed.ncbi.nlm.nih.gov/31462747/",
+ why:"The consensus statement on platform trials — a perpetual protocol with a shared control, arms entering and leaving. Details not machine-verified in this build."},
+hsieh1998:{a:"Hsieh FY, Bloch DA, Larsen MD",y:1998,t:"A simple method of sample size calculation for linear and logistic regression",s:"Statistics in Medicine 1998;17(14):1623–1634",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/9699234/",
+ why:"How to inflate for covariate adjustment: the variance inflation factor 1/(1 − R²)."},
+hoenig2001:{a:"Hoenig JM, Heisey DM",y:2001,t:"The abuse of power: the pervasive fallacy of power calculations for data analysis",s:"The American Statistician 2001;55(1):19–24",checked:false,link:"",
+ why:"Why observed power after the fact is uninformative. Cite this when a reviewer asks for the power of a null result. Details not machine-verified in this build."},
+
+/* --- the case studies --- */
+polio1955:{a:"Francis T Jr, Korns RF, Voight RB, et al.",y:1955,t:"An evaluation of the 1954 poliomyelitis vaccine trials: summary report",s:"American Journal of Public Health 1955;45(5 Pt 2):1–63",checked:false,link:"https://ajph.aphapublications.org/",
+ why:"The Salk field trial: roughly 1.8 million children, a randomised placebo-controlled core and a non-randomised observed-control arm running in parallel. The comparison between the two arms is the best natural demonstration ever run of what randomisation buys. Details not machine-verified in this build."},
+isis2:{a:"ISIS-2 (Second International Study of Infant Survival) Collaborative Group",y:1988,t:"Randomised trial of intravenous streptokinase, oral aspirin, both, or neither among 17,187 cases of suspected acute myocardial infarction",s:"The Lancet 1988;332(8607):349–360",checked:false,link:"https://pubmed.ncbi.nlm.nih.gov/2899772/",
+ why:"The mega-trial that established aspirin in myocardial infarction, and the origin of the famous astrological-sign subgroup analysis the authors included deliberately to discredit subgroup fishing. A 2×2 factorial. Details not machine-verified in this build."},
+cast1991:{a:"Echt DS, Liebson PR, Mitchell LB, et al.",y:1991,t:"Mortality and morbidity in patients receiving encainide, flecainide, or placebo. The Cardiac Arrhythmia Suppression Trial",s:"New England Journal of Medicine 1991;324(12):781–788",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/1900101/",
+ why:"The trial that found harm where every mechanism predicted benefit: suppressing ventricular ectopy after myocardial infarction increased mortality. Encainide and flecainide were stopped early for excess deaths. The permanent argument against surrogate endpoints."},
+ardsnet2000:{a:"The Acute Respiratory Distress Syndrome Network",y:2000,t:"Ventilation with lower tidal volumes as compared with traditional tidal volumes for acute lung injury and the acute respiratory distress syndrome",s:"New England Journal of Medicine 2000;342(18):1301–1308",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/10793162/",
+ why:"A device-and-technique trial rather than a drug trial: the intervention is a ventilator setting, delivered by a protocol. Stopped early at interim for benefit. The model for how to randomise a piece of equipment's use rather than the equipment itself."},
+cutts2005:{a:"Cutts FT, Zaman SMA, Enwere G, et al.; Gambian Pneumococcal Vaccine Trial Group",y:2005,t:"Efficacy of nine-valent pneumococcal conjugate vaccine against pneumonia and invasive pneumococcal disease in The Gambia: randomised, double-blind, placebo-controlled trial",s:"The Lancet 2005;365(9465):1139–1146",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/15794968/",
+ why:"A bacterial vaccine trial at scale: 8,718 children vaccinated and 8,719 given placebo, powered on radiological pneumonia. Efficacy 77% against vaccine-serotype invasive disease, 15% against all-cause admission and 16% against mortality — the last two being the numbers that changed policy, and the reason the trial had to be enormous."},
+henao2017:{a:"Henao-Restrepo AM, Camacho A, Longini IM, et al.",y:2017,t:"Efficacy and effectiveness of an rVSV-vectored vaccine in preventing Ebola virus disease: final results from the Guinea ring vaccination, open-label, cluster-randomised trial (Ebola Ça Suffit!)",s:"The Lancet 2017;389(10068):505–518",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/28017403/",
+ why:"A viral vaccine trial designed around an epidemic rather than in spite of one. Rings of contacts and contacts-of-contacts were the randomised clusters, with immediate versus delayed vaccination. An entirely new trial design, built and run inside an outbreak."},
+polack2020:{a:"Polack FP, Thomas SJ, Kitchin N, et al.; C4591001 Clinical Trial Group",y:2020,t:"Safety and efficacy of the BNT162b2 mRNA Covid-19 vaccine",s:"New England Journal of Medicine 2020;383(27):2603–2615",checked:true,link:"https://pubmed.ncbi.nlm.nih.gov/33301246/",
+ why:"The modern event-driven vaccine trial: 43,548 randomised 1:1, but the analysis triggered on 170 accrued cases, with a Bayesian framework and pre-specified interim looks. Eight cases in the vaccine arm versus 162 in placebo. The clearest illustration anywhere of why vaccine trials are sized on events, not on participants."},
+recovery2021:{a:"RECOVERY Collaborative Group",y:2021,t:"Dexamethasone in hospitalized patients with Covid-19",s:"New England Journal of Medicine 2021;384(8):693–704",checked:false,link:"https://www.recoverytrial.net/",
+ why:"A platform trial built in nine days, randomising tens of thousands with a one-page consent and outcomes from routine data. Proof that pragmatic design and enormous sample size can coexist. Details not machine-verified in this build."},
+stampede:{a:"James ND, Sydes MR, Clarke NW, et al.",y:2016,t:"Addition of docetaxel, zoledronic acid, or both to first-line long-term hormone therapy in prostate cancer (STAMPEDE): survival results from an adaptive, multiarm, multistage, platform randomised controlled trial",s:"The Lancet 2016;387(10024):1163–1177",checked:false,link:"https://pubmed.ncbi.nlm.nih.gov/26719232/",
+ why:"The flagship multi-arm multi-stage trial: a shared control arm, new comparisons added over a decade, arms dropped at interim. Details not machine-verified in this build."}
+};
+</script>
+<script>
+var V=function(s){return '<span class="m">'+s+'</span>';};
+var FR=function(a,b){return '<span class="frac"><span>'+a+'</span><span>'+b+'</span></span>';};
+var SQ=function(s){return '&radic;<span class="rad">'+s+'</span>';};
+var zA='<span class="m">z</span><sub>1&minus;&alpha;/2</sub>', zB='<span class="m">z</span><sub>1&minus;&beta;</sub>';
+
+var SECTIONS=[
+
+/* ============ M1 ============ */
+{id:'m1',nav:'The randomisation idea',title:'Module 1 — What randomisation actually buys, and what it does not',html:
+`<p>Every design on this site is a variation on one move: deciding who gets what by a mechanism unrelated to anything about them. Understanding precisely what that move accomplishes tells you which variations are legitimate and which are decoration.</p>
+
+<h3>The three things randomisation does</h3>
+<ol>
+<li><b>It balances what you measured and what you did not.</b> Matching, stratification and regression can only balance variables you thought of and recorded. Randomisation balances the ones you never imagined — in expectation, and the larger the trial the tighter that expectation.</li>
+<li><b>It makes the probability statement true.</b> A p-value is a statement about what would happen under repeated random allocation. Without randomisation, the reference distribution the p-value is computed against does not exist.</li>
+<li><b>It removes the clinician from the allocation.</b> Which is why <em>concealment</em> of the upcoming assignment matters as much as the randomisation itself. A randomisation list in an unsealed envelope is not randomisation.</li>
+</ol>
+<div class="note bad"><b>What it does not do.</b> Randomisation does nothing about measurement error, nothing about differential loss to follow-up after allocation, nothing about a surrogate endpoint that does not track the real one, and nothing about a question that was not worth asking. It balances groups at baseline. Everything after baseline is your problem.</div>
+
+<div class="cs">
+<h4>Case study — Streptomycin for pulmonary tuberculosis, MRC, 1948</h4>
+<div class="meta">Drug · first randomised controlled trial in the English literature · free full text at PubMed Central</div>
+<p>Britain after the war could afford streptomycin for only a small number of patients. That scarcity is what made the trial ethically possible: allocation by lot was a fairer way to distribute a scarce drug than physician choice, and Bradford Hill used it.</p>
+<p><b>Why it still matters for design.</b> The allocation sequence was held centrally, in sealed envelopes, opened only after a patient was accepted into the trial. Nobody recruiting a patient knew what that patient would receive. That is <em>allocation concealment</em>, and it was arguably a larger innovation than randomisation itself — earlier alternation-based studies were randomised in spirit but transparent in practice, so clinicians steered sicker patients away from the experimental arm.</p>
+<p><b>The design lesson:</b> the trial was small by modern standards and definitive anyway, because the effect was large and the outcome was hard. Sample size is the price you pay for small effects and soft outcomes.</p>
+</div>
+
+<div class="cs">
+<h4>Case study — The 1954 Salk polio field trials</h4>
+<div class="meta">Viral vaccine · approximately 1.8 million children · a natural experiment in study design</div>
+<p>The Salk trial ran in two formats simultaneously, because some states refused to give placebo. In the randomised areas, children were randomised to vaccine or placebo, double-blind. In the observed-control areas, second-graders were offered vaccine and first- and third-graders served as controls.</p>
+<p><b>What the comparison showed.</b> The observed-control design was biased by participation: consent to be vaccinated was associated with socioeconomic position, and polio incidence itself varied with socioeconomic position. The randomised, placebo-controlled portion produced the credible estimate; the observed-control portion produced a different one.</p>
+<p><b>The design lesson:</b> this is the closest thing epidemiology has to a controlled experiment on the value of randomisation, run at a scale that will never be repeated. When someone proposes an observed-control design because randomisation is inconvenient, this is the reference.</p>
+</div>
+
+<h3>Blinding, and why it is a separate decision</h3>
+<table>
+<tr><th>Level</th><th>Blinded</th><th>Protects against</th></tr>
+<tr><td>Open label</td><td>Nobody</td><td>Nothing after allocation</td></tr>
+<tr><td>Single blind</td><td>Participant</td><td>Reporting and placebo effects</td></tr>
+<tr><td>Double blind</td><td>Participant and clinician</td><td>Also differential co-intervention and management</td></tr>
+<tr><td>Outcome-assessor blind</td><td>The person measuring</td><td>Ascertainment bias — often achievable even in an open trial, and often forgotten</td></tr>
+</table>
+<div class="plainbox"><p>If you cannot blind the intervention — surgery, physiotherapy, a service redesign — you can nearly always still blind the <b>outcome assessor</b>, and you should. The commonest missed opportunity in pragmatic trials is an unblinded trial with a subjective primary outcome scored by the people delivering the intervention.</p></div>`},
+
+/* ============ M2 ============ */
+{id:'m2',nav:'Parallel trials & the core formulae',title:'Module 2 — The parallel trial, term by term',html:
+`<p>Two arms, individual randomisation, one analysis at the end. Everything else on this site is this with a complication added.</p>
+
+<h3>Binary outcome</h3>
+<div class="eq"><div class="lbl">Per arm, k = allocation ratio</div>
+${V('n')}<sub>1</sub> = ${FR('['+zA+' '+SQ('(1+1/'+V('k')+')'+V('p&#772;')+'(1&minus;'+V('p&#772;')+')')+' + '+zB+' '+SQ(V('p')+'<sub>1</sub>(1&minus;'+V('p')+'<sub>1</sub>) + '+V('p')+'<sub>2</sub>(1&minus;'+V('p')+'<sub>2</sub>)/'+V('k'))+']<sup>2</sup>','('+V('p')+'<sub>1</sub> &minus; '+V('p')+'<sub>2</sub>)<sup>2</sup>')}</div>
+<div class="plainbox"><p><b>Bottom:</b> the gap you want to detect, squared. This is the engine — halve the gap and the trial quadruples.<br>
+<b>Top, first term:</b> the noise you must climb over to hold false positives at α, computed as if the arms were identical.<br>
+<b>Top, second term:</b> the extra margin so a real difference reliably clears that bar, computed as if they differ.</p></div>
+
+<h3>Continuous outcome</h3>
+<div class="eq"><div class="lbl">Equal arms, equal variance</div>
+${V('n')} per arm = ${FR('2('+zA+' + '+zB+')<sup>2</sup>'+V('&sigma;')+'<sup>2</sup>',V('&Delta;')+'<sup>2</sup>')} = ${FR('2('+zA+' + '+zB+')<sup>2</sup>',V('d')+'<sup>2</sup>')}</div>
+<div class="note good"><b>The number to memorise.</b><div class="deep">
+<p><b>Where the binary formula comes from.</b> The test statistic is the difference in observed proportions divided by its standard error. Under the null the two arms share a common proportion p&#772;, so the standard error is &radic;<span class="rad">p&#772;(1&minus;p&#772;)(1/n<sub>1</sub> + 1/n<sub>2</sub>)</span>. Under the alternative they differ, so it is &radic;<span class="rad">p<sub>1</sub>(1&minus;p<sub>1</sub>)/n<sub>1</sub> + p<sub>2</sub>(1&minus;p<sub>2</sub>)/n<sub>2</sub></span>.</p>
+<p>Power is the probability that the statistic exceeds the critical value when the alternative is true. Writing that condition out and solving for n gives exactly the formula above: the two square-root terms are the two standard errors, each multiplied by its own z. That is the whole derivation, and it explains why the formula looks lopsided &mdash; it is evaluating the same quantity under two different hypotheses.</p>
+<p>Casagrande, Pike and Smith then noticed that this treats a discrete binomial count as continuous, and derived the correction; Fleiss, Tytun and Ury generalised it to unequal allocation. It always increases n, typically by 5&ndash;15%, and it is the single commonest reason two calculators give different answers for identical inputs.</p>
+</div> At two-sided 5% and 80% power, 2(1.96 + 0.842)² = 15.7. So <b>n per arm ≈ 16/d²</b> where d = Δ/σ. A moderate effect of d = 0.5 needs about 63 per arm; a small one of d = 0.2 needs about 393. You can sanity-check almost any continuous trial in your head with this.</div>
+
+<h3>Time-to-event outcome — the one that is counted differently</h3>
+<div class="eq"><div class="lbl">Schoenfeld — required EVENTS</div>
+${V('d')} = ${FR('('+zA+' + '+zB+')<sup>2</sup>',V('p')+'<sub>1</sub>'+V('p')+'<sub>2</sub> (ln HR)<sup>2</sup>')} &nbsp;&nbsp;&rarr; equal allocation: ${FR('4('+zA+' + '+zB+')<sup>2</sup>','(ln HR)<sup>2</sup>')}
+<div style="margin-top:.5rem;font-size:.9rem;color:var(--ink2)">then participants ${V('n')} = ${V('d')} ÷ P(event)</div></div>
+<div class="plainbox"><p><b>The log-rank test's power depends on the number of events<div class="deep">
+<p><b>Why survival is counted in events.</b> Schoenfeld's 1981 result gives the asymptotic distribution of the log-rank statistic. The key consequence is that the variance of the estimated log hazard ratio depends on the number of events d and the allocation proportions, not on the number of people at risk: var(ln HR) &asymp; 1/(d&middot;p<sub>1</sub>p<sub>2</sub>). Setting (ln HR)&sup2;/var equal to (z<sub>1&minus;&alpha;/2</sub> + z<sub>1&minus;&beta;</sub>)&sup2; and solving for d gives the formula. Participants appear nowhere in it.</p>
+<p>Freedman's alternative comes from a different approximation to the same statistic and gives (1+HR)&sup2;/(1&minus;HR)&sup2; in place of 1/(ln HR)&sup2;. At HR = 0.7 the two differ by about 2%; at HR = 0.4 the gap widens to roughly 10%, with Freedman the more conservative. Both are standard and both appear in regulatory submissions. State which you used.</p>
+<p>Both assume proportional hazards throughout. When the effect is delayed &mdash; as with many vaccines and immunotherapies &mdash; the log-rank test loses power badly and these formulae understate what you need. Lakatos gives a numerical method that handles non-proportionality, staggered accrual and drop-in together; beyond that, simulate.</p>
+</div>, not the number of participants.</b> A trial of 2,000 people with 40 deaths has the power of a trial of 200 people with 40 deaths. Once you know you need, say, 250 events, you can get them by recruiting more people or by following them longer — a real design choice that is invisible if you only think in headcount.</p></div>
+
+<div class="calc" id="c-par">
+<h4>Parallel trial — all three outcome types</h4>
+<div class="row">
+<div class="fieldc"><label>Outcome type</label><select id="pa_t"><option value="bin">Binary</option><option value="cont">Continuous</option><option value="tte">Time-to-event</option></select></div>
+<div class="fieldc" data-k="bin"><label>Control event rate p₁</label><input type="number" id="pa_p1" value="0.30" step="0.01" min="0.0001" max="0.9999"></div>
+<div class="fieldc" data-k="bin"><label>Intervention rate p₂</label><input type="number" id="pa_p2" value="0.20" step="0.01" min="0.0001" max="0.9999"></div>
+<div class="fieldc" data-k="cont"><label>Difference to detect Δ</label><input type="number" id="pa_d" value="5" step="0.5"></div>
+<div class="fieldc" data-k="cont"><label>Standard deviation σ</label><input type="number" id="pa_sd" value="12" step="0.5" min="0.0001"></div>
+<div class="fieldc" data-k="tte"><label>Hazard ratio</label><input type="number" id="pa_hr" value="0.70" step="0.05" min="0.01"></div>
+<div class="fieldc" data-k="tte"><label>Probability of an event</label><input type="number" id="pa_pe" value="0.40" step="0.05" min="0.001" max="1"></div>
+<div class="fieldc"><label>Allocation ratio</label><input type="number" id="pa_k" value="1" step="0.5" min="0.1" max="10"></div>
+<div class="fieldc"><label>Power</label><select id="pa_pw"><option value="0.80">80%</option><option value="0.90">90%</option><option value="0.95">95%</option></select></div>
+<div class="fieldc"><label>Two-sided α</label><input type="number" id="pa_a" value="0.05" step="0.005" min="0.001" max="0.3"></div>
+<div class="fieldc"><label>Loss to follow-up</label><input type="number" id="pa_l" value="0.10" step="0.05" min="0" max="0.8"></div>
+</div>
+<div class="out" id="pa_out"></div>
+</div>
+
+<h3>The analysis plan that has to match</h3>
+<table>
+<tr><th>Element</th><th>Decide before the trial opens</th></tr>
+<tr><td><b>Estimand</b></td><td>Population, treatment condition, outcome, handling of intercurrent events, summary measure. ICH E9(R1). Doing this properly forces most of the rest.</td></tr>
+<tr><td><b>Analysis set</b></td><td>Intention to treat as primary for superiority. Per-protocol reported alongside — and for non-inferiority, both must agree.</td></tr>
+<tr><td><b>Adjustment</b></td><td>Pre-specify covariates. Adjusting for a strong baseline predictor of a continuous outcome buys power for free; adding it post hoc invites suspicion.</td></tr>
+<tr><td><b>Missing data</b></td><td>Name the mechanism you assume and the method. Complete-case analysis is an assumption, not a default.</td></tr>
+<tr><td><b>Multiplicity</b></td><td>One primary outcome. If more, state the hierarchy or the correction.</td></tr>
+<tr><td><b>Subgroups</b></td><td>Pre-specified, few, and tested as <em>interactions</em> — never as separate within-subgroup tests.</td></tr>
+</table>
+
+<div class="cs">
+<h4>Case study — ISIS-2, 1988: aspirin, streptokinase, both or neither</h4>
+<div class="meta">Drug · 2×2 factorial · 17,187 patients with suspected acute myocardial infarction</div>
+<p>A factorial design answers two questions with one trial by randomising each participant twice. ISIS-2 randomised aspirin versus placebo and streptokinase versus placebo simultaneously, and found both effective and their combination better still.</p>
+<p><b>The design point:</b> a 2×2 factorial is nearly free — you get the second comparison for almost no extra sample size — <em>provided there is no interaction</em>. If the two treatments interact, each main effect is estimated in a mixture of conditions and the interpretation muddies. Powering for the interaction itself typically needs about four times the sample of a main effect, which is why almost no factorial trial is powered to detect one.</p>
+<p><b>The subgroup lesson.</b> The investigators reported that aspirin's benefit was absent in patients born under Gemini or Libra. They included it deliberately, to demonstrate what subgroup analysis produces when you run enough of them. It is still the most effective teaching device on the subject.</p>
+</div>`},
+
+/* ============ M3 ============ */
+{id:'m3',nav:'Cluster randomised trials',title:'Module 3 — Randomising groups, not people',html:
+`<p>Sometimes the intervention cannot be given to an individual. A clinic protocol, a community campaign, a school programme, a change to how a ward works — these arrive at the level of the group, and randomising individuals inside a group would let the intervention leak.</p>
+
+<h3>Why this costs you</h3>
+<p>Two people from the same clinic resemble each other more than two people picked at random. The second person from a clinic therefore tells you less than a fresh person would. Your effective sample is smaller than your headcount, and analysing a cluster trial as though it were individually randomised gives intervals that are too narrow — a documented and still common error.</p>
+<div class="eq"><div class="lbl">Design effect</div>
+DE = 1 + (${V('m')} &minus; 1)${V('&rho;')} &nbsp;&nbsp;&rarr;&nbsp;&nbsp; ${V('n')}<sub>cluster</sub> = DE &times; ${V('n')}<sub>individual</sub></div>
+<div class="plainbox"><p>Two consequences worth internalising. <b>A tiny ρ matters enormously if clusters are large:</b> ρ = 0.01 with 500 people per cluster gives DE = 6. And <b>past a point, more people inside a cluster is nearly useless</b> — the effective information per cluster ceilings at 1/ρ however many you enrol. At ρ = 0.02, a cluster of 200 contributes about as much as a cluster of 50.</p></div>
+
+<h3>The Hayes–Bennett route, and why field epidemiologists prefer it</h3><div class="deep">
+<p><b>Where the design effect comes from.</b> Suppose each observation is the sum of a cluster-level component with variance &tau;&sup2; and an individual component with variance &sigma;&sup2;<sub>w</sub>. The intracluster correlation is &rho; = &tau;&sup2;/(&tau;&sup2; + &sigma;&sup2;<sub>w</sub>). The variance of a cluster mean over m individuals is &tau;&sup2; + &sigma;&sup2;<sub>w</sub>/m, whereas under independence it would be (&tau;&sup2; + &sigma;&sup2;<sub>w</sub>)/m. The ratio of the two is 1 + (m &minus; 1)&rho;. That is Kish's design effect, and nothing more mysterious is going on.</p>
+<p>Now take the limit. As m grows, the variance of the cluster mean tends to &tau;&sup2;, not to zero &mdash; a cluster mean cannot be estimated more precisely than the cluster itself varies. Dividing through shows the effective sample per cluster ceilings at 1/&rho;. At &rho; = 0.02 that ceiling is 50, so enrolling 200 people per cluster buys you barely more than enrolling 60. <b>This single fact should govern how you allocate a fixed budget between more clusters and bigger clusters, and it almost always argues for more clusters.</b></p>
+</div>
+<div class="eq"><div class="lbl">Clusters per arm, proportions</div>
+${V('c')} = 1 + ('+zA+' + '+zB+')<sup>2</sup> ${FR(V('p')+'<sub>1</sub>(1&minus;'+V('p')+'<sub>1</sub>)/'+V('m')+' + '+V('p')+'<sub>2</sub>(1&minus;'+V('p')+'<sub>2</sub>)/'+V('m')+' + '+V('k')+'<sup>2</sup>('+V('p')+'<sub>1</sub><sup>2</sup> + '+V('p')+'<sub>2</sub><sup>2</sup>)','('+V('p')+'<sub>1</sub> &minus; '+V('p')+'<sub>2</sub>)<sup>2</sup>')}</div>
+<p>Here <span class="m">k</span> is the between-cluster coefficient of variation, not an allocation ratio. It is more transportable across settings than ρ — which depends on the outcome prevalence and so cannot be borrowed between populations — and it extends naturally to rates, which the design effect does not. The formula gives <b>clusters per arm directly</b>, which is the quantity that actually constrains a trial. The leading +1 is a small-sample degrees-of-freedom correction.</p>
+
+<div class="calc" id="c-crt">
+<h4>Cluster randomised trial</h4>
+<div class="row">
+<div class="fieldc"><label>Method</label><select id="cr_m"><option value="cv">Coefficient of variation</option><option value="icc">Design effect from ICC</option></select></div>
+<div class="fieldc"><label>Control arm proportion</label><input type="number" id="cr_p1" value="0.30" step="0.01" min="0.0001" max="0.99"></div>
+<div class="fieldc"><label>Intervention proportion</label><input type="number" id="cr_p2" value="0.20" step="0.01" min="0.0001" max="0.99"></div>
+<div class="fieldc"><label>People per cluster</label><input type="number" id="cr_n" value="50" step="5" min="1"></div>
+<div class="fieldc"><label>Coefficient of variation k</label><input type="number" id="cr_cv" value="0.25" step="0.05" min="0" max="2"></div>
+<div class="fieldc"><label>ICC ρ</label><input type="number" id="cr_icc" value="0.02" step="0.005" min="0" max="0.99"></div>
+<div class="fieldc"><label>Power</label><select id="cr_pw"><option value="0.80">80%</option><option value="0.90">90%</option></select></div>
+</div>
+<div class="out" id="cr_out"></div>
+</div>
+
+<div class="cs">
+<h4>Case study — Ebola ça Suffit!, Guinea 2015–16: the ring vaccination trial</h4>
+<div class="meta">Viral vaccine · cluster randomised · rings of contacts as the unit of randomisation</div>
+<p>There was no way to run a conventional individually randomised vaccine trial in an outbreak that was moving geographically and shrinking. So the design was rebuilt around the epidemiology: when a case was confirmed, a <em>ring</em> of that person's contacts and contacts-of-contacts was defined, and the whole ring was randomised to immediate or delayed vaccination.</p>
+<p><b>Why the ring is the right cluster.</b> Rings are where the next cases will occur, so the design concentrates statistical information exactly where transmission is. And the delayed arm is ethically defensible in a way a placebo arm would not have been — everyone is vaccinated, the randomisation is of timing.</p>
+<p><b>What it cost.</b> Rings are small and variable in size, incidence within them is extremely uncertain, and the between-cluster variation is enormous — all the things that inflate a cluster trial. The reported efficacy was 100% with a wide interval, and the interval is the honest part: with few events in few clusters, a point estimate of 100% is compatible with a range of true values.</p>
+<p><b>The design lesson:</b> when the epidemiology will not fit a standard design, redesign around the epidemiology. Also, note the trade — an open-label design with an outcome that required laboratory confirmation, so blinding was sacrificed and outcome ascertainment was protected instead.</p>
+</div>
+
+<div class="cs">
+<h4>Case study — The Gambian 9-valent pneumococcal conjugate vaccine trial, 2005</h4>
+<div class="meta">Bacterial vaccine · individually randomised · 17,437 children</div>
+<p>Not a cluster trial, and included here for contrast: it shows what individual randomisation costs when the outcome is rare and the endpoint chain is long. Children aged 6–51 weeks received three doses of vaccine or placebo.</p>
+<p><b>The sample size logic.</b> Powering on invasive pneumococcal disease alone would have been impossible — it is too rare. The trial was powered on radiological pneumonia, which is commoner, and invasive disease and mortality were pre-specified secondary outcomes. Efficacy came out at 77% against vaccine-serotype invasive disease, 15% against all-cause admission, and 16% against mortality.</p>
+<p><b>Why those last two numbers required 17,000 children.</b> All-cause mortality is the outcome policymakers act on, and vaccine efficacy against it is necessarily diluted, because most deaths are not pneumococcal. Detecting a 16% reduction in a diluted outcome is enormously more demanding than detecting 77% in a specific one. <b>The specificity of your endpoint and the size of your trial trade against each other directly</b> — and the endpoint that is easiest to detect is rarely the one that changes policy.</p>
+</div>`},
+
+/* ============ M4 ============ */
+{id:'m4',nav:'Stepped wedge — in depth',title:'Module 4 — The stepped wedge cluster randomised trial',html:
+`<p>Every cluster starts in the control condition. At randomly assigned intervals, clusters cross over to the intervention, one group at a time, until all have crossed. Nobody crosses back.</p>
+<figure id="fig-sw"></figure>
+
+<h3>Why anyone chooses it</h3>
+<table>
+<tr><th>Reason</th><th>Honest assessment</th></tr>
+<tr><td>Everyone eventually receives the intervention</td><td>Genuine, and often what makes the trial politically possible</td></tr>
+<tr><td>Rollout is logistically staged anyway</td><td>Genuine and the strongest reason. If you can only train ten clinics at a time, randomise the order and you have a trial for free</td></tr>
+<tr><td>Each cluster is its own control</td><td>Genuine — within-cluster comparison adds information a parallel trial does not have</td></tr>
+<tr><td>"It needs fewer clusters"</td><td><b>Sometimes true, often not.</b> Depends heavily on ICC, cluster size and number of steps. Do not assume it</td></tr>
+<tr><td>"Withholding is unethical so we must use it"</td><td><b>Usually a confusion.</b> If the intervention is known to work, no randomised design is ethical. If it is not known to work, a parallel trial withholds nothing</td></tr>
+</table>
+
+<h3>The Hussey–Hughes model — and every assumption it makes</h3>
+<div class="eq"><div class="lbl">The standard model</div>
+${V('Y')}<sub>ij</sub> = ${V('&mu;')} + ${V('&alpha;')}<sub>i</sub> + ${V('&beta;')}<sub>j</sub> + ${V('X')}<sub>ij</sub>${V('&theta;')} + ${V('e')}<sub>ij</sub>
+<div style="margin-top:.55rem;font-size:.9rem;color:var(--ink2)">
+${V('&alpha;')}<sub>i</sub> = random effect for cluster i, variance ${V('&tau;')}<sup>2</sup> &nbsp;·&nbsp;
+${V('&beta;')}<sub>j</sub> = FIXED effect for time period j &nbsp;·&nbsp;
+${V('X')}<sub>ij</sub> = 1 once cluster i has crossed over &nbsp;·&nbsp;
+${V('&theta;')} = the treatment effect</div></div>
+<div class="note bad"><b>The β<sub>j</sub> term is the whole point and the whole danger.</b> In a stepped wedge, time and treatment are structurally confounded: later periods contain more intervention clusters. If secular trend is not modelled, any background improvement over the study period is attributed to your intervention. That is why time is a fixed effect here, and why <b>a stepped wedge analysed without period effects is not interpretable.</b> It is also why the design is uniquely vulnerable to anything that changes over calendar time — a guideline change, a pandemic, a stockout, a staffing crisis.</div>
+
+<h4>What the model assumes that is usually false</h4>
+<table>
+<tr><th>Assumption</th><th>Reality</th><th>Consequence and remedy</th></tr>
+<tr class="hl"><td><b>The treatment effect is immediate and constant</b></td><td>Implementation ramps up over months. Fidelity in month 1 is not fidelity in month 12</td><td><b>The most serious problem.</b> Kenny and colleagues showed that fitting the constant-effect model when the effect varies with exposure time gives a biased estimate, in a direction that is not intuitive. Remedy: model exposure-time effects explicitly, or pre-specify a lag and exclude a transition window</td></tr>
+<tr><td>Cluster effects are exchangeable and constant over time</td><td>Within-cluster correlation usually decays with time separation</td><td>Use a nested-exchangeable or exponential-decay structure. Li and colleagues give the options; the choice changes the required number of clusters materially</td></tr>
+<tr><td>The secular trend is common to all clusters</td><td>Clusters can trend differently</td><td>Random cluster-by-time slopes, at the cost of power</td></tr>
+<tr><td>No carry-over or contamination</td><td>Staff move; word spreads</td><td>Intrinsic to the design and cannot be fixed by analysis</td></tr>
+<tr><td>Equal cluster sizes</td><td>Rarely true</td><td>Inflate; unequal sizes cost efficiency</td></tr>
+</table>
+
+<h3>Sizing a stepped wedge</h3><div class="deep">
+<p><b>Why the stepped wedge gains anything at all.</b> In a parallel cluster trial the treatment effect is estimated entirely <em>between</em> clusters, so the cluster-level variance &tau;&sup2; sits in the denominator of your precision and there is nothing to be done about it. In a stepped wedge each cluster supplies both control and intervention observations, so part of the comparison is <em>within</em> cluster, where &tau;&sup2; cancels.</p>
+<p>That is the source of the efficiency, and it also tells you exactly when the efficiency is large: when &rho; is high, so that between-cluster variance dominates and removing it matters. When &rho; is very low, the parallel design was not suffering much from clustering in the first place, and the stepped wedge's advantage shrinks or reverses &mdash; while you still pay for measuring every cluster in every period.</p>
+<p><b>The countervailing cost.</b> Because clusters cross over at different times, the design must spend information estimating period effects. Those fixed &beta;<sub>j</sub> terms are not free; they consume degrees of freedom and they are what prevents secular trend contaminating the estimate. So the stepped wedge trades between-cluster variance (which it removes) for time-effect estimation (which it must pay for). Whether that trade is favourable is an arithmetic question with an answer that depends on &rho;, cluster size and the number of steps &mdash; which is what the calculator below is for, and why "the stepped wedge needs fewer clusters" should never be asserted without computing it.</p>
+</div>
+<p>The practical route is the stepped-wedge design effect, applied to a parallel cluster trial size. It is a convenience, and it assumes the Hussey–Hughes model exactly.</p>
+<div class="eq"><div class="lbl">Woertman design effect, relative to an individually randomised trial</div>
+DE<sub>SW</sub> = ${FR('1 + '+V('&rho;')+'('+V('kt')+V('m')+' + '+V('bm')+' &minus; 1)','1 + '+V('&rho;')+'(&frac12;'+V('kt')+V('m')+' + '+V('bm')+' &minus; 1)')} &times; ${FR('3(1 &minus; '+V('&rho;')+')','2'+V('t')+'(1 &minus; 1/'+V('t')+'<sup>2</sup>)')}
+<div style="margin-top:.5rem;font-size:.88rem;color:var(--ink2)">${V('k')} = steps · ${V('t')} = measurements per cluster after baseline · ${V('m')} = individuals per cluster per period · ${V('b')} = baseline measurements</div></div>
+<div class="note">Several algebraically different but equivalent forms of this appear in the literature, and software implementations disagree in the third significant figure. The calculator below uses the Hussey–Hughes variance directly rather than a design-effect shortcut, which is both more transparent and easier to check. Whatever you use, <b>state the model and the correlation structure in your protocol</b> — "we used a stepped wedge design effect" is not reproducible.</div>
+
+<div class="calc" id="c-sw">
+<h4>Stepped wedge — clusters, steps, and the trade between them</h4>
+<div class="row">
+<div class="fieldc"><label>Control proportion</label><input type="number" id="sw_p1" value="0.30" step="0.01" min="0.0001" max="0.99"></div>
+<div class="fieldc"><label>Intervention proportion</label><input type="number" id="sw_p2" value="0.22" step="0.01" min="0.0001" max="0.99"></div>
+<div class="fieldc"><label>Steps (crossover points)</label><input type="number" id="sw_k" value="5" step="1" min="1" max="30"></div>
+<div class="fieldc"><label>Individuals per cluster per period</label><input type="number" id="sw_m" value="30" step="5" min="1"></div>
+<div class="fieldc"><label>ICC ρ</label><input type="number" id="sw_icc" value="0.02" step="0.005" min="0.0001" max="0.9"></div>
+<div class="fieldc"><label>Power</label><select id="sw_pw"><option value="0.80">80%</option><option value="0.90">90%</option></select></div>
+</div>
+<div class="out" id="sw_out"></div>
+</div>
+
+<h3>Analysis plan for a stepped wedge</h3>
+<ol>
+<li><b>Primary model:</b> mixed-effects with a random cluster effect, <em>fixed</em> categorical period effects, and a treatment indicator. Never omit the period effects.</li>
+<li><b>Correlation structure:</b> pre-specify. Exchangeable is the default and is usually optimistic. Nested exchangeable or decay is more realistic and needs more clusters.</li>
+<li><b>Few clusters:</b> below roughly 20–30 clusters the mixed-model standard errors are anticonservative. Use small-sample corrections (Kenward–Roger, or Mancl–DeRouen / Fay–Graubard for GEE) and say which.</li>
+<li><b>Exposure-time effect:</b> pre-specify a secondary model that lets the effect vary with time since crossover. If it differs materially from the constant-effect model, report both — the difference is a finding, not a nuisance.</li>
+<li><b>Cross-sectional versus cohort:</b> state which. Different participants each period, or the same ones followed? The correlation structures differ and so does the analysis.</li>
+<li><b>Sensitivity:</b> exclude the transition period; refit with a different correlation structure; permutation test if clusters are few.</li>
+</ol>
+<div class="note bad"><b>The stepped wedge failure mode to watch for.</b> A trial runs from 2019 into 2021 with clusters crossing over progressively. A pandemic arrives. Because later periods contain disproportionately more intervention clusters, anything that changed with calendar time is entangled with the treatment effect. Period effects absorb an average trend but not a shock that hits clusters differently. There is no analytic rescue; the protocol should name this risk in advance and pre-specify how it will be examined.</div>`},
+
+/* ============ M5 ============ */
+{id:'m5',nav:'Crossover, factorial, non-inferiority',title:'Module 5 — Crossover, factorial and non-inferiority designs',html:
+`<h3>Crossover</h3>
+<p>Each participant receives both treatments in a randomised order, separated by a washout. The comparison is within-person, so between-person variability — usually the largest source of noise — is eliminated.</p>
+<div class="eq"><div class="lbl">Number of participants, AB/BA crossover, continuous outcome</div>
+${V('n')} = ${FR('2('+zA+' + '+zB+')<sup>2</sup> '+V('&sigma;')+'<sub>w</sub><sup>2</sup>',V('&Delta;')+'<sup>2</sup>')}
+<div style="margin-top:.5rem;font-size:.9rem;color:var(--ink2)">where ${V('&sigma;')}<sub>w</sub> is the <b>within</b>-person standard deviation, not the between-person one</div></div>
+<div class="plainbox"><p>The saving can be dramatic, and it comes entirely from σ<div class="deep">
+<p><b>Where the crossover saving comes from.</b> In a parallel trial the contrast is between two independent people, so the variance of the difference is 2&sigma;&sup2; where &sigma;&sup2; is the total between-person variance. In a crossover the contrast is between two measurements on the <em>same</em> person, so the between-person component cancels and only the within-person variance remains.</p>
+<p>Write &sigma;&sup2; = &sigma;&sup2;<sub>b</sub> + &sigma;&sup2;<sub>w</sub> and let the within-person correlation between the two periods be &rho; = &sigma;&sup2;<sub>b</sub>/&sigma;&sup2;. Then the crossover requires a factor of (1 &minus; &rho;) of the parallel trial's sample. At &rho; = 0.5 that is half; at &rho; = 0.8, a fifth. The whole benefit is the size of &rho;, which is why a crossover of a noisy, unstable outcome saves almost nothing &mdash; and why a published within-person standard deviation, or a test&ndash;retest correlation, is the parameter you must hunt down before committing to the design.</p>
+</div><sub>w</sub> being smaller than σ. If the within-person SD is half the between-person SD, the crossover needs a quarter of the participants. Finding a published within-person SD is the practical difficulty — most papers report the between-person one.</p></div>
+<table>
+<tr><th>Requires</th><th>Why</th></tr>
+<tr><td>A chronic, stable condition</td><td>The participant must be in the same state at the start of each period</td></tr>
+<tr><td>A treatment that does not cure</td><td>If period 1 cures them, period 2 is uninformative</td></tr>
+<tr><td>Adequate washout</td><td>Carry-over biases the comparison, and testing for it post hoc is notoriously underpowered</td></tr>
+<tr><td>Low dropout</td><td>A participant lost in period 2 contributes nothing to the paired comparison</td></tr>
+</table>
+
+<h3>Factorial</h3>
+<p>Randomise twice. Two questions, one trial, almost no extra sample size — provided the treatments do not interact. See the ISIS-2 case study in Module 2.</p>
+<div class="note">Powering for the <em>interaction</em> rather than the main effects typically needs about four times the sample. Almost no factorial trial does this, which means almost no factorial trial can rule out an interaction. State that explicitly rather than implying additivity was demonstrated.</div>
+
+<h3>Non-inferiority</h3>
+<p>The new treatment is cheaper, shorter, safer or simpler. You do not need it to be better; you need it to be not appreciably worse.</p>
+<div class="eq"><div class="lbl">Per arm, binary outcome, one-sided</div>
+${V('n')} = ${FR('('+V('z')+'<sub>1&minus;&alpha;</sub> + '+zB+')<sup>2</sup> ['+V('p')+'<sub>T</sub>(1&minus;'+V('p')+'<sub>T</sub>) + '+V('p')+'<sub>C</sub>(1&minus;'+V('p')+'<sub>C</sub>)]','('+V('p')+'<sub>T</sub> &minus; '+V('p')+'<sub>C</sub> + '+V('&delta;')+')<sup>2</sup>')}</div>
+<div class="plainbox"><p>Structurally this is the two-proportion formula with the margin δ replacing the difference you would otherwise have wanted to detect. Because δ is usually much smaller than a difference worth detecting, <b>non-inferiority trials are typically much larger</b>. Tightening a 6-point margin to 3 points roughly quadruples the trial.</p></div>
+<h4>Three things that make non-inferiority harder than it looks</h4>
+<ol>
+<li><b>Choosing δ is not a statistical decision.</b> It must preserve a worthwhile fraction of the control's own benefit over doing nothing — usually estimated from historical placebo-controlled trials, taking the lower confidence bound and preserving perhaps half of it. Write the justification into the protocol.</li>
+<li><b>Assay sensitivity.</b> If your control arm underperforms its historical benchmark, you can declare non-inferiority when both treatments are ineffective.</li>
+<li><b>The analysis-set reversal.</b> In a superiority trial, non-adherence dilutes differences and intention-to-treat is conservative. In a non-inferiority trial that same dilution pushes the result <em>towards</em> the conclusion you want. Both ITT and per-protocol must be reported and must agree. This design is unforgiving of sloppy conduct.</li>
+</ol>
+
+<div class="calc" id="c-ni">
+<h4>Non-inferiority, binary outcome</h4>
+<div class="row">
+<div class="fieldc"><label>Control success p_C</label><input type="number" id="ni_pc" value="0.90" step="0.01" min="0.0001" max="0.9999"></div>
+<div class="fieldc"><label>Expected new-treatment success p_T</label><input type="number" id="ni_pt" value="0.90" step="0.01" min="0.0001" max="0.9999"></div>
+<div class="fieldc"><label>Margin δ</label><input type="number" id="ni_d" value="0.06" step="0.01" min="0.001" max="0.5"></div>
+<div class="fieldc"><label>One-sided α</label><input type="number" id="ni_a" value="0.025" step="0.005" min="0.001" max="0.2"></div>
+<div class="fieldc"><label>Power</label><select id="ni_pw"><option value="0.90">90%</option><option value="0.80">80%</option></select></div>
+<div class="fieldc"><label>Loss to follow-up</label><input type="number" id="ni_l" value="0.10" step="0.05" min="0" max="0.8"></div>
+</div>
+<div class="out" id="ni_out"></div>
+</div>`},
+
+/* ============ M6 ============ */
+{id:'m6',nav:'Adaptive & platform designs',title:'Module 6 — Sequential, adaptive and platform trials',html:
+`<p>The fixed-sample trial answers one question once. The designs here answer questions as evidence accumulates, which is more efficient and considerably harder to get right.</p>
+
+<h3>Group sequential — looking early without cheating</h3>
+<p>If you test at every interim look at α = 0.05, your overall false-positive rate is far above 5%. Group sequential boundaries spend the total α across the looks so the overall rate is preserved.</p>
+<table>
+<tr><th>Boundary</th><th>Behaviour</th><th>Cost</th></tr>
+<tr><td><b>Pocock</b></td><td>Same nominal α at every look</td><td>Easier to stop early; maximum sample size inflated noticeably</td></tr>
+<tr class="hl"><td><b>O'Brien–Fleming</b></td><td>Very stringent early, near-nominal at the end</td><td>Maximum sample barely inflated. The usual default in confirmatory trials</td></tr>
+<tr><td><b>Lan–DeMets alpha spending</b></td><td>A spending function, not fixed looks</td><td>Frees you from committing to the number and timing of analyses in advance</td></tr>
+</table>
+<div class="note"><b>Stopping early for benefit is not free.</b> Trials stopped early at an interim for efficacy systematically overestimate the effect, because you stopped at a random high. Report the adjusted estimate, and be sceptical of dramatic effects from trials that stopped at their first look.</div>
+
+<h3>Adaptive designs — what can be adapted</h3>
+<table>
+<tr><th>Adaptation</th><th>What it does</th><th>Watch</th></tr>
+<tr><td>Sample size re-estimation</td><td>Recompute n from the observed nuisance parameter (variance, control rate)</td><td>Blinded re-estimation is nearly free. Unblinded re-estimation needs α protection</td></tr>
+<tr><td>Arm dropping</td><td>Discard losing arms at interim</td><td>Multiplicity across arms and across stages</td></tr>
+<tr><td>Response-adaptive randomisation</td><td>Shift allocation towards the winning arm</td><td>Confounds with time drift; can lose power; ethically attractive and statistically contested</td></tr>
+<tr><td>Population enrichment</td><td>Narrow to the subgroup that is responding</td><td>The estimand changes mid-trial. Pre-specify or do not do it</td></tr>
+<tr><td>Seamless phase II/III</td><td>Combine dose-finding and confirmation</td><td>Requires a rigorous combination test across stages</td></tr>
+</table>
+
+<h3>Multi-arm multi-stage and platform trials</h3>
+<p>A shared control arm, several experimental arms, interim stages at which arms are dropped for futility. The efficiency comes from the shared control: comparing five treatments against one control needs far fewer participants than five separate two-arm trials, because the control group is reused.</p>
+<div class="eq"><div class="lbl">Why a shared control is efficient</div>
+Five separate trials: 10 arms&rsquo; worth of recruitment. &nbsp;&nbsp; One platform: 6 arms&rsquo; worth.
+<div style="margin-top:.45rem;font-size:.9rem;color:var(--ink2)">with the control arm sized up by roughly &radic;<span class="rad">(number of experimental arms)</span> for optimal allocation</div></div>
+<div class="calc" id="c-mams">
+<h4>Shared control — what a platform saves</h4>
+<div class="row">
+<div class="fieldc"><label>Experimental arms</label><input type="number" id="ma_k" value="4" step="1" min="1" max="12"></div>
+<div class="fieldc"><label>n per arm in a two-arm trial</label><input type="number" id="ma_n" value="300" step="25" min="10"></div>
+</div>
+<div class="out" id="ma_out"></div>
+</div>
+
+<div class="cs">
+<h4>Case study — BNT162b2, 2020: the event-driven vaccine trial</h4>
+<div class="meta">Viral vaccine · 43,548 randomised 1:1 · analysis triggered on 170 accrued cases</div>
+<p>The headline number everyone remembers is 43,548 participants. The number that actually determined the trial is 170 — the accrued, evaluable cases of Covid-19 at the data cut-off. Of these, 8 were in the vaccine arm and 162 in placebo, giving 95% efficacy.</p>
+<p><b>The design point.</b> A vaccine efficacy trial is sized on <b>events</b>. Participants are a means of generating them, and the number needed depends entirely on the attack rate in the placebo arm — which is unknowable in advance during a novel epidemic. The solution is an event-driven design: pre-specify the number of cases that triggers each analysis, and let the calendar do what it does. If transmission is high, the trial finishes early; if low, it runs longer. Had this trial been time-driven it could have concluded with too few cases to say anything.</p>
+<p><b>Also worth studying:</b> the pre-specified Bayesian framework with interim looks, and the success criterion stated in advance as a posterior probability. The trial was fast because the design absorbed uncertainty, not because corners were cut.</p>
+<p><b>The lesson generalises:</b> whenever your event rate is uncertain — outbreaks, rare outcomes, new populations — <b>design to stop on events accrued, not on time elapsed.</b> Trials have done this for decades; observational studies almost never do.</p>
+</div>
+
+<div class="cs">
+<h4>Case study — CAST, 1991: when the surrogate lied</h4>
+<div class="meta">Drug · randomised placebo-controlled · stopped early for HARM</div>
+<p>Ventricular ectopy after myocardial infarction predicts sudden death. Encainide and flecainide suppress ectopy reliably. The inference — that suppressing it would reduce death — was so compelling that some argued a placebo arm was unethical.</p>
+<p>The trial ran anyway. Encainide and flecainide were discontinued because of excess mortality: among 1,498 patients, the active drugs produced more arrhythmic deaths, not fewer.</p>
+<p><b>The design lessons, and there are several.</b> First, <b>a surrogate endpoint is a hypothesis, not a shortcut</b> — the drugs did exactly what they were designed to do to the surrogate while killing people. Second, the data monitoring committee and the stopping rule were the mechanism that limited the damage; a trial without interim monitoring would have continued. Third, the argument that equipoise was absent was wrong, and would have been wrong in a way that killed more people than the trial did.</p>
+</div>
+
+<div class="cs">
+<h4>Case study — ARDSNet ARMA, 2000: randomising a setting, not a substance</h4>
+<div class="meta">Device / technique · multicentre randomised · stopped early at interim for benefit</div>
+<p>Patients with acute lung injury were randomised to ventilation at 6 versus 12 mL per kilogram of predicted body weight. The intervention is not a device — both arms use the same ventilator — but a protocol governing how it is set.</p>
+<p><b>What makes equipment trials different.</b> You usually cannot blind: the ventilator display shows the setting. So the protections shift elsewhere — an explicit written algorithm so the intervention is the same in every centre, objective outcomes (mortality, ventilator-free days) that resist ascertainment bias, and centralised monitoring of protocol adherence. Note also the choice of <em>predicted</em> body weight, computed from height and sex: a deliberate standardisation so that "6 mL/kg" means the same thing in every patient.</p>
+<p><b>The design lesson:</b> when the intervention is a technique, the protocol <em>is</em> the intervention. Fidelity monitoring is not administrative overhead; it is the equivalent of assaying your drug.</p>
+</div>`},
+
+/* ============ M7 ============ */
+{id:'m7',nav:'Analysis plans & rigour',title:'Module 7 — The analysis plan, and rigour by design',html:
+`<p>A sample size calculation is a statement about an analysis that has not happened yet. If the analysis changes, the calculation was wrong. So the two must be written together.</p>
+
+<h3>Rigour requirements by design</h3>
+<table>
+<tr><th>Design</th><th>The thing that must be right</th><th>How it fails</th></tr>
+<tr><td>Parallel</td><td>Allocation concealment; ITT</td><td>Predictable sequence; post-hoc exclusions</td></tr>
+<tr><td>Cluster</td><td>Clustering in the ANALYSIS, not just the design</td><td>Individual-level analysis; too few clusters; recruitment after allocation is known (identification bias)</td></tr>
+<tr><td><b>Stepped wedge</b></td><td>Period effects; a pre-specified correlation structure; an exposure-time check</td><td>Secular trend read as effect; constant-effect model when the effect ramps</td></tr>
+<tr><td>Crossover</td><td>Washout adequacy</td><td>Carry-over, which cannot be reliably detected after the fact</td></tr>
+<tr><td>Factorial</td><td>Additivity</td><td>Interaction present and the trial cannot detect it</td></tr>
+<tr><td>Non-inferiority</td><td>A justified margin; ITT and per-protocol agreeing</td><td>Sloppy conduct favouring the desired conclusion</td></tr>
+<tr><td>Adaptive / sequential</td><td>Pre-specified α spending</td><td>Unplanned looks; effect inflation from early stopping</td></tr>
+<tr><td>Platform</td><td>Multiplicity across arms and time; control drift</td><td>Non-concurrent controls compared as if concurrent</td></tr>
+</table>
+
+<h3>The estimand, which comes before everything</h3>
+<p>ICH E9(R1) asks five things. Answer them and most of the analysis plan writes itself.</p>
+<ol>
+<li><b>Population</b> — which patients does the question concern?</li>
+<li><b>Treatment condition</b> — the intervention as assigned, or as received?</li>
+<li><b>Endpoint</b> — the variable, at what time, measured how?</li>
+<li><b>Intercurrent events</b> — what happens when someone stops treatment, switches, or dies before the outcome? This is where most protocols are silent and most disputes arise.</li>
+<li><b>Population-level summary</b> — difference in means, risk ratio, hazard ratio?</li>
+</ol>
+
+<h3>Things that inflate the sample you must plan for</h3>
+<table>
+<tr><th>Factor</th><th>Adjustment</th><th>When</th></tr>
+<tr><td>Loss to follow-up</td><td>÷ (1 − loss)</td><td>Always. Protects power, not against attrition bias</td></tr>
+<tr><td>Non-adherence / drop-in</td><td>Dilute the effect, then re-size</td><td>Always in pragmatic trials. An ITT effect is attenuated by non-adherence</td></tr>
+<tr><td>Clustering</td><td>× design effect</td><td>Any grouped delivery, even in an individually randomised trial with therapists</td></tr>
+<tr><td>Interim analyses</td><td>× boundary inflation factor</td><td>Sequential designs. O'Brien–Fleming ≈ 1.02–1.05; Pocock more</td></tr>
+<tr><td>Multiple primary outcomes</td><td>α ÷ number, or a hierarchy</td><td>If you truly have more than one primary</td></tr>
+<tr><td>Covariate adjustment</td><td>× 1/(1 − R²) for binary; a <em>saving</em> of (1 − ρ²) for continuous with a baseline measure</td><td>Different directions for different outcome types — check which applies</td></tr>
+</table>
+<div class="note good"><b>The free lunch worth taking.</b> For a continuous outcome measured at baseline and follow-up, analysing by ANCOVA with the baseline value as a covariate reduces the required sample by a factor of roughly (1 − ρ²), where ρ is the baseline–follow-up correlation. At ρ = 0.6 that is a 36% reduction for the price of one extra measurement. Pre-specify it.</div>
+
+<div class="calc" id="c-adj">
+<h4>Adjustment stack — what your headline n becomes</h4>
+<div class="row">
+<div class="fieldc"><label>Headline n per arm</label><input type="number" id="ad_n" value="200" step="10" min="2"></div>
+<div class="fieldc"><label>Loss to follow-up</label><input type="number" id="ad_l" value="0.15" step="0.05" min="0" max="0.8"></div>
+<div class="fieldc"><label>Non-adherence (dilutes effect)</label><input type="number" id="ad_na" value="0.10" step="0.05" min="0" max="0.6"></div>
+<div class="fieldc"><label>Drop-in from control</label><input type="number" id="ad_di" value="0.05" step="0.05" min="0" max="0.6"></div>
+<div class="fieldc"><label>Design effect</label><input type="number" id="ad_de" value="1" step="0.1" min="1" max="20"></div>
+<div class="fieldc"><label>Primary comparisons</label><input type="number" id="ad_m" value="1" step="1" min="1" max="20"></div>
+<div class="fieldc"><label>Interim boundary</label><select id="ad_b"><option value="1">None</option><option value="1.03">O'Brien–Fleming</option><option value="1.2">Pocock</option></select></div>
+<div class="fieldc"><label>Baseline correlation ρ (ANCOVA)</label><input type="number" id="ad_rho" value="0" step="0.1" min="0" max="0.95"></div>
+</div>
+<div class="out" id="ad_out"></div>
+</div>
+
+<h3>The paragraph that survives review</h3>
+<div class="note good"><p>State, in order: the design and unit of randomisation; the primary outcome and its estimand; the effect size you are powering for <em>and where it came from</em>; the control-arm rate or standard deviation <em>and its source</em>; α, sidedness and power; allocation ratio; for clustered designs the ICC or coefficient of variation and its source; adjustments for attrition, non-adherence and interim analyses; the software or formula with a citation; and one sentence of sensitivity — what the requirement becomes if the control rate is wrong by a third. Eleven clauses. Most published trials give four.</p></div>`},
+
+/* ============ M8 ============ */
+{id:'m8',nav:'Pitfalls — all designs',title:'Module 8 — What goes wrong',html:
+`<h3>Pitfalls no sample size can fix</h3>
+<table>
+<tr><th>Problem</th><th>What it does</th></tr>
+<tr><td><b>Broken allocation concealment</b></td><td>Selection bias at the moment of entry. A larger trial gives a tighter interval around a biased estimate</td></tr>
+<tr><td><b>Identification bias in cluster trials</b></td><td>Participants recruited after the cluster's allocation is known. Recruiters behave differently in intervention clusters. The single most damaging cluster-trial flaw</td></tr>
+<tr><td><b>Surrogate endpoint</b></td><td>You measure the wrong thing perfectly. See CAST</td></tr>
+<tr><td><b>Differential attrition</b></td><td>Loss related to both arm and outcome</td></tr>
+<tr><td><b>Unblinded subjective outcome</b></td><td>Ascertainment bias. Blind the assessor even when you cannot blind anything else</td></tr>
+<tr><td><b>Secular trend in a stepped wedge</b></td><td>Structurally entangled with treatment. Period effects absorb an average trend, not a shock</td></tr>
+<tr><td><b>Contamination</b></td><td>Control arm receives the intervention. Dilutes towards the null</td></tr>
+</table>
+
+<h3>Pitfalls that are sample size problems</h3>
+<table>
+<tr><th>Problem</th><th>Symptom</th><th>Fix</th></tr>
+<tr><td>Effect size reverse-engineered</td><td>The protocol's effect happens to be what the affordable sample detects</td><td>Choose from clinical meaning, then negotiate openly</td></tr>
+<tr><td>Effect size from a pilot</td><td>Roughly a coin-flip chance of success</td><td>Pilots inform feasibility and variability, never effect size</td></tr>
+<tr><td>Control rate optimistic</td><td>The commonest cause of a failed trial</td><td>Local routine data; sweep it; consider event-driven stopping</td></tr>
+<tr><td>ICC guessed</td><td>Cluster trial underpowered by a factor of two</td><td>Cite a published compendium; sweep; report the range</td></tr>
+<tr><td>Too few clusters</td><td>Anticonservative standard errors</td><td>Small-sample corrections; permutation inference; below ~8 per arm, reconsider the design</td></tr>
+<tr><td>Interim looks unplanned</td><td>Inflated type I error</td><td>Pre-specify α spending</td></tr>
+<tr><td>Powered on the crude, reported adjusted</td><td>Adequately powered for an analysis nobody will read</td><td>Size for the analysis you will actually present</td></tr>
+<tr><td>Post-hoc power</td><td>Reviewer asks for the power of a null result</td><td>Report the confidence interval; cite Hoenig and Heisey</td></tr>
+</table>
+
+<h3>Reading a trial's sample size section critically</h3>
+<ol>
+<li>Does it state <b>where the control rate came from</b>? If not, assume it was chosen to make the arithmetic work.</li>
+<li>Is the effect size clinically justified, or merely achievable?</li>
+<li>For survival outcomes, does it give <b>events</b> or only patients? Only patients means it may not have been thought through.</li>
+<li>For cluster designs, is the ICC stated, sourced, and is the number of clusters given?</li>
+<li>Does the stated analysis match what the calculation assumed?</li>
+<li>Was the target met? A trial that recruited 60% of target and reports a null result is not evidence of absence.</li>
+<li>If it stopped early for benefit, has the effect been adjusted for that?</li>
+</ol>
+<div class="plainbox"><p>Seven questions, and you can apply them to any trial paper in about three minutes. Most published sample size sections fail at least two of them.</p></div>`},
+
+/* ============ M9 ============ */
+{id:'refs',nav:'The classic papers & books',title:'Sources — and why each one is worth your time',html:
+`<div class="note"><span class="pill ok">verified</span> means authors, year, journal, volume and page range were checked against PubMed, the publisher or an indexing service while this page was built. <span class="pill check">check</span> means they were not — usually a book, where editions differ. <b>No page or equation numbers appear anywhere on this site.</b> Pagination shifts between printings and an invented page number is worse than none. Each entry has a blank locator box; fill it from your own copy and export the list.</div>
+<div id="refsbody"></div>
+<button class="btn" id="expref" style="margin-top:1rem">Copy the reference list</button>
+<h3>Books worth owning</h3>
+<table>
+<tr><th>Book</th><th>For</th></tr>
+<tr><td><b>Machin, Campbell, Tan &amp; Tan</b> — Sample size tables for clinical studies, 4th ed.</td><td>The most comprehensive table book. Each chapter states the formula then tabulates it</td></tr>
+<tr><td><b>Chow, Shao, Wang &amp; Lokhnygina</b> — Sample size calculations in clinical research, 3rd ed.</td><td>The regulatory-facing reference: equivalence, non-inferiority, bioequivalence, group sequential</td></tr>
+<tr><td><b>Julious</b> — Sample sizes for clinical trials</td><td>Strongest on normal outcomes and on the consequences of uncertainty in σ</td></tr>
+<tr><td><b>Hayes &amp; Moulton</b> — Cluster randomised trials, 2nd ed.</td><td>The definitive treatment of the cluster design</td></tr>
+<tr><td><b>Friedman, Furberg, DeMets</b> — Fundamentals of clinical trials</td><td>The general textbook. Read it before the statistical ones</td></tr>
+<tr><td><b>Piantadosi</b> — Clinical trials: a methodologic perspective</td><td>Strongest on the reasoning behind design choices rather than the formulae</td></tr>
+</table>
+<div class="note">Bibliographic details for the books above were not machine-verified in this build, and no page numbers are supplied. Check the edition you hold.</div>`}
+];
+</script>
+<script>
+
+var TABS=[{"key": "found", "label": "Foundations", "sections": ["m1"]}, {"key": "par", "label": "Parallel", "sections": ["m2"]}, {"key": "clu", "label": "Cluster", "sections": ["m3"]}, {"key": "sw", "label": "Stepped wedge", "sections": ["m4"]}, {"key": "ni", "label": "Crossover & non-inferiority", "sections": ["m5"]}, {"key": "adapt", "label": "Adaptive & platform", "sections": ["m6"]}, {"key": "plan", "label": "Analysis & rigour", "sections": ["m7"]}, {"key": "pit", "label": "Pitfalls", "sections": ["m8"]}, {"key": "ref", "label": "Sources", "sections": ["refs"]}];
+var MYXP=EXPLORERS.filter(function(x){return ["precision", "dilute", "deff", "swtrend", "swlag", "nimargin", "interim"].indexOf(x.id)>=0;});
+document.getElementById('chrome').innerHTML=chrome('tri');
+document.getElementById('author').innerHTML=authorBlock();
+buildTabs(TABS,SECTIONS,MYXP);
+initChrome();
+MYXP.forEach(function(x){XP.add(x);});
+XP.renderAll();
+(function(){
+  var order=['mrc1948','neymanpearson1933','hill1965','ichE9','consort2010','spirit2013','schulz2005',
+    'lachin1981','fleiss1980','casagrande1978','schoenfeld1983','freedman1982','lakatos1988','blackwelder1982','connor1987','hsieh1998','hoenig2001',
+    'hayes1999','hayes2017','donner2000',
+    'hussey2007','hemming2015','woertman2013','copas2015','hughes2015','kenny2022','li2021','hemmingConsort',
+    'pocock1977','obrien1979','landemets1983','royston2003','murphy2005','hemming2020plat',
+    'polio1955','isis2','cast1991','ardsnet2000','cutts2005','henao2017','polack2020','recovery2021','stampede'];
+  var heads={mrc1948:'Foundations and reporting standards',lachin1981:'Core sample size methods',
+    hayes1999:'Cluster randomised trials',hussey2007:'Stepped wedge',pocock1977:'Sequential, adaptive and platform',
+    polio1955:'The trials referred to in the case studies'};
+  renderRefs(REFS,order,heads,'#refsbody','#expref');
+})();
+
+</script>
+<script>
+/* ===== shared maths ===== */
+
+
+/* ===== M2 parallel ===== */
+function paVis(){
+  var t=$('#pa_t').value;
+  $$('#c-par .fieldc[data-k]').forEach(function(f){ f.style.display=(f.dataset.k===t)?'':'none'; });
+}
+wire(['pa_t','pa_p1','pa_p2','pa_d','pa_sd','pa_hr','pa_pe','pa_k','pa_pw','pa_a','pa_l'],function(){
+  paVis();
+  var t=$('#pa_t').value,k=val('pa_k'),pw=val('pa_pw'),a=val('pa_a'),l=val('pa_l'),o=$('#pa_out');
+  var za=qnorm(1-a/2), zb=qnorm(pw), n1,n2,extra='',ev=null;
+  if(t==='bin'){
+    var p1=val('pa_p1'),p2=val('pa_p2');
+    var n=twoProp(p1,p2,k,a,pw,true); if(!n){o.innerHTML='<span style="color:var(--ox)">Check the inputs.</span>';return;}
+    n1=n; n2=k*n;
+    var raw=twoProp(p1,p2,k,a,pw,false);
+    extra='<tr><td>Risk difference</td><td class="num">'+((p1-p2)*100).toFixed(1)+' pts</td></tr>'+
+          '<tr><td>Risk ratio</td><td class="num">'+(p2/p1).toFixed(2)+'</td></tr>'+
+          '<tr><td>Number needed to treat</td><td class="num">'+(1/Math.abs(p1-p2)).toFixed(1)+'</td></tr>'+
+          '<tr><td>Before continuity correction</td><td class="num">'+Math.ceil(raw)+'</td></tr>';
+  } else if(t==='cont'){
+    var d=val('pa_d'),sd=val('pa_sd');
+    if(!(d!==0&&sd>0)){o.innerHTML='<span style="color:var(--ox)">Check the inputs.</span>';return;}
+    n1=sq(za+zb)*sq(sd)*(1+1/k)/sq(d)/(1+1/k)*(1+1/k); /* keep explicit */
+    n1=sq(za+zb)*(sq(sd)+sq(sd)/k)/sq(d);
+    n2=k*n1;
+    extra='<tr><td>Standardised effect d</td><td class="num">'+(Math.abs(d)/sd).toFixed(3)+'</td></tr>'+
+          '<tr><td>Rule-of-thumb 16/d² check</td><td class="num">'+Math.ceil(16/sq(d/sd))+'</td></tr>';
+  } else {
+    var hr=val('pa_hr'),pe=val('pa_pe');
+    var lhr=Math.log(hr);
+    if(!(Math.abs(lhr)>1e-9&&pe>0&&pe<=1)){o.innerHTML='<span style="color:var(--ox)">Check the inputs.</span>';return;}
+    var f1=k/(1+k), f2=1/(1+k);
+    var dS=sq(za+zb)/(f1*f2*sq(lhr));
+    var dF=(Math.abs(k-1)<1e-9)? sq(za+zb)*sq(1+hr)/sq(1-hr) : null;
+    var N=dS/pe; n1=N*f2; n2=N*f1; ev=dS;
+    extra='<tr><td><b>Required events (Schoenfeld)</b></td><td class="num"><b>'+Math.ceil(dS)+'</b></td></tr>'+
+      (dF!==null?'<tr><td>Required events (Freedman)</td><td class="num">'+Math.ceil(dF)+'</td></tr>':'')+
+      '<tr><td>Event probability used</td><td class="num">'+(pe*100).toFixed(1)+'%</td></tr>';
+  }
+  var a1=Math.ceil(n1/(1-l)), a2=Math.ceil(n2/(1-l));
+  o.innerHTML='<div class="big">'+a1.toLocaleString()+' + '+a2.toLocaleString()+' = '+(a1+a2).toLocaleString()+'</div>'+
+   '<table><tr><th>Quantity</th><th>Value</th></tr>'+
+   '<tr><td>Formula requirement</td><td class="num">'+Math.ceil(n1)+' + '+Math.ceil(n2)+'</td></tr>'+
+   '<tr><td>After '+(l*100).toFixed(0)+'% loss to follow-up</td><td class="num">'+a1+' + '+a2+'</td></tr>'+extra+'</table>'+
+   (ev?'<div class="note">The events figure is the primary quantity here. Participants are only events divided by the probability of having one — which means you can trade recruitment against follow-up duration. Design to stop on events accrued, not on time elapsed.</div>':'');
+});
+
+/* ===== M3 cluster ===== */
+wire(['cr_m','cr_p1','cr_p2','cr_n','cr_cv','cr_icc','cr_pw'],function(){
+  var meth=$('#cr_m').value,p1=val('cr_p1'),p2=val('cr_p2'),m=val('cr_n'),cv=val('cr_cv'),icc=val('cr_icc'),pw=val('cr_pw');
+  var o=$('#cr_out'); if(!o) return;
+  if(Math.abs(p1-p2)<1e-12||!(p1>0&&p1<1&&p2>0&&p2<1&&m>=1)){o.innerHTML='<span style="color:var(--ox)">Check the inputs.</span>';return;}
+  var za=qnorm(0.975), zb=qnorm(pw);
+  var nInd=sq(za+zb)*(p1*(1-p1)+p2*(1-p2))/sq(p1-p2);
+  var c, de;
+  if(meth==='cv'){
+    var numr=p1*(1-p1)/m + p2*(1-p2)/m + sq(cv)*(sq(p1)+sq(p2));
+    c=1+sq(za+zb)*numr/sq(p1-p2);
+    de=(c-1)*m/nInd;
+  } else { de=1+(m-1)*icc; c=nInd*de/m; }
+  var sweep='';
+  [0.05,0.10,0.15,0.20,0.25,0.35,0.50].forEach(function(q){
+    var x;
+    if(meth==='cv'){ var nn=p1*(1-p1)/m+p2*(1-p2)/m+sq(q)*(sq(p1)+sq(p2)); x=1+sq(za+zb)*nn/sq(p1-p2); }
+    else { x=nInd*(1+(m-1)*q)/m; }
+    sweep+='<tr'+(Math.abs(q-(meth==='cv'?cv:icc))<1e-9?' class="hl"':'')+'><td>'+q+'</td><td class="num">'+Math.ceil(x)+'</td><td class="num">'+(Math.ceil(x)*2*m).toLocaleString()+'</td></tr>';
+  });
+  o.innerHTML='<div class="big">'+Math.ceil(c)+' clusters per arm</div>'+
+   '<table><tr><th>Quantity</th><th>Value</th></tr>'+
+   '<tr><td>Total clusters</td><td class="num">'+Math.ceil(c)*2+'</td></tr>'+
+   '<tr><td>Total individuals</td><td class="num">'+(Math.ceil(c)*2*m).toLocaleString()+'</td></tr>'+
+   '<tr><td>Individually randomised requirement per arm</td><td class="num">'+Math.ceil(nInd)+'</td></tr>'+
+   '<tr><td>Implied design effect</td><td class="num">'+de.toFixed(2)+'</td></tr></table>'+
+   (c<8?'<div class="note bad">Fewer than 8 clusters per arm. Chance imbalance is a serious risk, standard analyses are anticonservative, and the sample size formulae themselves become unreliable. Consider pair-matching or stratified allocation and a permutation test — and say so in the protocol.</div>':'')+
+   '<p style="font-size:.88rem;color:var(--ink2);margin:.6rem 0 .2rem"><b>Sensitivity to the parameter you borrowed:</b></p>'+
+   '<table><tr><th>'+(meth==='cv'?'Coefficient of variation':'ICC')+'</th><th>Clusters/arm</th><th>Total people</th></tr>'+sweep+'</table>'+
+   '<p style="font-size:.87rem;color:var(--ink2)">An assumed ICC or coefficient of variation pulled from nowhere is the weakest link in most cluster protocols. Cite where yours came from and report this range.</p>';
+});
+
+/* ===== M4 stepped wedge (Hussey-Hughes variance) ===== */
+function swVar(I,K,m,rho,sig2){
+  /* I clusters, K steps (periods after baseline = K, total periods T=K+1)
+     Hussey & Hughes (2007) variance of theta-hat for a complete design.
+     X_ij = 1 if cluster i has crossed by period j. */
+  var T=K+1, U=0, W=0, Ssq=0;
+  var per=I/K; /* clusters crossing at each step */
+  var Xsum=[];
+  for(var j=0;j<T;j++){
+    var cross=0;
+    for(var s=1;s<=K;s++){ if(j>=s) cross+=per; }
+    Xsum.push(cross);
+  }
+  for(var j2=0;j2<T;j2++){ U+=Xsum[j2]; Ssq+=Xsum[j2]*Xsum[j2]; }
+  /* W = sum_i (sum_j X_ij)^2 : each cluster crossing at step s contributes (T-s)^2 */
+  for(var s2=1;s2<=K;s2++){ W += per*sq(T-s2); }
+  var tau2=rho*sig2, sw2=sig2-tau2;
+  var A=I*sw2*(sw2+T*tau2);
+  var den=(I*U-W)*sw2 + (U*U + I*T*U - T*W - I*Ssq)*tau2;
+  if(den<=0) return null;
+  return A/den;
+}
+function swMinI(K,m,rho,sig2,need){
+  for(var t=1;t<=6000;t++){ var v=swVar(t,K,m,rho,sig2); if(v!==null&&v<=need) return t; }
+  return null;
+}
+wire(['sw_p1','sw_p2','sw_k','sw_m','sw_icc','sw_pw'],function(){
+  var p1=val('sw_p1'),p2=val('sw_p2'),K=Math.round(val('sw_k')),m=val('sw_m'),rho=val('sw_icc'),pw=val('sw_pw');
+  var o=$('#sw_out'); if(!o) return;
+  var delta=p1-p2;
+  if(Math.abs(delta)<1e-9||!(p1>0&&p1<1&&p2>0&&p2<1&&K>=1&&m>=1&&rho>0&&rho<1)){
+    o.innerHTML='<span style="color:var(--ox)">Check the inputs.</span>';return;}
+  var pbar=(p1+p2)/2, sig2=pbar*(1-pbar)/m;
+  var za=qnorm(0.975), zb=qnorm(pw), need=sq(delta)/sq(za+zb);
+  var raw=swMinI(K,m,rho,sig2,need);
+  if(!raw){o.innerHTML='<div class="note bad">No feasible number of clusters reaches that power with these assumptions. The effect you are chasing is too small for this design at this cluster size and ICC.</div>';return;}
+  var I=Math.ceil(raw/K)*K, T=K+1, tot=I*T*m, cp=I*T;
+  var de=1+(m-1)*rho;
+  var nInd=sq(za+zb)*(p1*(1-p1)+p2*(1-p2))/sq(delta);
+  var cPar=Math.ceil(nInd*de/m), parTot=cPar*2;
+  /* sweep over steps */
+  var sweep='', best=null;
+  [2,3,4,5,6,8,10,12].forEach(function(kk){
+    var r2=swMinI(kk,m,rho,sig2,need); if(!r2) return;
+    var i2=Math.ceil(r2/kk)*kk, ob=i2*(kk+1)*m;
+    if(best===null||r2<best[1]) best=[kk,r2];
+    sweep+='<tr'+(kk===K?' class="hl"':'')+'><td>'+kk+'</td><td class="num">'+r2+'</td><td class="num">'+i2+'</td><td class="num">'+(i2*(kk+1)).toLocaleString()+'</td><td class="num">'+ob.toLocaleString()+'</td></tr>';
+  });
+  o.innerHTML='<div class="big">'+I+' clusters · '+T+' periods · '+tot.toLocaleString()+' observations</div>'+
+   '<table><tr><th>Quantity</th><th>Value</th></tr>'+
+   '<tr><td>Minimum clusters for '+(pw*100)+'% power</td><td class="num">'+raw+'</td></tr>'+
+   '<tr><td>Rounded up to a multiple of '+K+' steps</td><td class="num">'+I+'</td></tr>'+
+   '<tr><td>Clusters crossing over at each step</td><td class="num">'+(I/K)+'</td></tr>'+
+   '<tr><td>Measurement periods including baseline</td><td class="num">'+T+'</td></tr>'+
+   '<tr><td>Cluster-periods measured</td><td class="num">'+cp.toLocaleString()+'</td></tr>'+
+   '<tr><td><b>Total observations</b></td><td class="num"><b>'+tot.toLocaleString()+'</b></td></tr>'+
+   '<tr><td>Parallel cluster trial, for comparison</td><td class="num">'+parTot+' clusters · '+(parTot*m).toLocaleString()+' people</td></tr></table>'+
+   (I<parTot
+     ? '<div class="note good">Here the stepped wedge needs '+I+' clusters against '+parTot+' for a parallel cluster trial \u2014 and clusters are usually what you are short of. Note the trade: it needs '+tot.toLocaleString()+' observations against '+(parTot*m).toLocaleString()+', because every cluster is measured in every period. You are swapping recruitment difficulty for measurement burden and calendar time.</div>'
+     : '<div class="note bad">Here the stepped wedge needs <b>more</b> clusters ('+I+') than a parallel cluster trial ('+parTot+'). This is commoner than the folklore suggests, particularly when the ICC is low and clusters are large. The stepped wedge is not automatically the economical choice \u2014 calculate it rather than assuming it.</div>')+
+   (I<12?'<div class="note bad">With only '+I+' clusters the mixed-model standard errors will be anticonservative. Pre-specify a small-sample correction (Kenward\u2013Roger, or Mancl\u2013DeRouen for GEE) and say so in the protocol.</div>':'')+
+   '<p style="font-size:.88rem;color:var(--ink2);margin:.7rem 0 .2rem"><b>More steps, or more clusters? The real trade:</b></p>'+
+   '<table><tr><th>Steps</th><th>Min clusters</th><th>Rounded</th><th>Cluster-periods</th><th>Observations</th></tr>'+sweep+'</table>'+
+   '<p style="font-size:.87rem;color:var(--ink2)">Two things to read off that table. First, the minimum number of clusters '+
+   (best?'bottoms out around '+best[0]+' steps and then <b>rises again</b>':'has an interior minimum')+
+   ' \u2014 adding steps beyond that point helps nothing, because each cluster ends up contributing too few periods in one condition or the other. Second, the measurement burden climbs steadily with the number of steps whatever happens to the cluster count. '+
+   'Third, and easily missed: the rounded column jumps because the number of clusters must divide evenly among the steps, so an awkward number of steps can cost you several clusters for nothing.</p>'+
+   '<p style="font-size:.87rem;color:var(--ink2)">Computed from the Hussey\u2013Hughes variance with an exchangeable within-cluster correlation and an immediate, constant treatment effect. Both assumptions are optimistic \u2014 see the assumptions table above. Treat this as the floor, not the answer.</p>';
+});
+
+/* ===== M4 figure ===== */
+(function(){
+  var host=document.getElementById('fig-sw'); if(!host) return;
+  var K=5,I=10,T=K+1, per=I/K;
+  var W=700,H=300,L=118,Tp=52,cw=(W-L-20)/T, chh=(H-Tp-40)/I;
+  var s='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
+  s+='<text x="6" y="20" font-size="11" fill="var(--ink2)" font-family="IBM Plex Mono,monospace">CLUSTER</text>';
+  for(var j=0;j<T;j++){
+    s+='<text x="'+(L+cw*j+cw/2)+'" y="'+(Tp-10)+'" text-anchor="middle" font-size="10.5" fill="var(--ink2)" font-family="IBM Plex Mono,monospace">P'+(j+1)+'</text>';
+  }
+  s+='<text x="'+(L+(W-L-20)/2)+'" y="'+(Tp-28)+'" text-anchor="middle" font-size="11" fill="var(--ink3)" font-family="IBM Plex Mono,monospace">TIME PERIOD &rarr;</text>';
+  for(var i=0;i<I;i++){
+    var step=Math.floor(i/per)+1;
+    s+='<text x="'+(L-8)+'" y="'+(Tp+chh*i+chh/2+4)+'" text-anchor="end" font-size="10" fill="var(--ink3)" font-family="IBM Plex Mono,monospace">'+(i+1)+'</text>';
+    for(var j2=0;j2<T;j2++){
+      var on=(j2>=step);
+      s+='<rect x="'+(L+cw*j2)+'" y="'+(Tp+chh*i)+'" width="'+(cw-2)+'" height="'+(chh-2)+'" '+
+         'fill="'+(on?'var(--ox)':'var(--sunk)')+'" opacity="'+(on?0.88:1)+'" stroke="var(--rule)" stroke-width="0.8"/>';
+    }
+  }
+  /* staircase */
+  var path='M'+(L)+','+(Tp);
+  for(var st=1;st<=K;st++){
+    path+=' L'+(L+cw*st)+','+(Tp+chh*per*(st-1))+' L'+(L+cw*st)+','+(Tp+chh*per*st);
+  }
+  path+=' L'+(L+cw*K)+','+(Tp+chh*I);
+  s+='<path d="'+path+'" fill="none" stroke="var(--ink)" stroke-width="2.4"/>';
+  s+='<rect x="'+L+'" y="'+(H-30)+'" width="14" height="11" fill="var(--sunk)" stroke="var(--rule)"/>'+
+     '<text x="'+(L+20)+'" y="'+(H-21)+'" font-size="10.5" fill="var(--ink2)" font-family="IBM Plex Mono,monospace">CONTROL</text>'+
+     '<rect x="'+(L+110)+'" y="'+(H-30)+'" width="14" height="11" fill="var(--ox)" opacity="0.88" stroke="var(--rule)"/>'+
+     '<text x="'+(L+130)+'" y="'+(H-21)+'" font-size="10.5" fill="var(--ink2)" font-family="IBM Plex Mono,monospace">INTERVENTION</text>'+
+     '<text x="'+(W-22)+'" y="'+(H-21)+'" text-anchor="end" font-size="10.5" fill="var(--ink3)" font-family="IBM Plex Mono,monospace">ORDER OF CROSSOVER IS RANDOMISED</text>';
+  s+='</svg>';
+  host.innerHTML=s+'<figcaption><b>Fig. 1</b> &nbsp;A complete stepped wedge with 10 clusters and 5 steps. Every cluster contributes control data before it crosses and intervention data after, so the treatment effect is estimated partly within clusters and partly between them. Notice what the staircase also shows: later periods contain proportionally more intervention clusters, which is why time and treatment are structurally confounded and why period effects are compulsory in the analysis. Original illustration.</figcaption>';
+})();
+
+/* ===== M5 non-inferiority ===== */
+wire(['ni_pc','ni_pt','ni_d','ni_a','ni_pw','ni_l'],function(){
+  var pc=val('ni_pc'),pt=val('ni_pt'),d=val('ni_d'),a=val('ni_a'),pw=val('ni_pw'),l=val('ni_l');
+  var o=$('#ni_out'); if(!o) return;
+  var den=pt-pc+d;
+  if(den<=0){o.innerHTML='<div class="note bad">The expected difference already exceeds the margin, so non-inferiority cannot be demonstrated under these assumptions. Either the margin is too tight or the expected performance too poor.</div>';return;}
+  var n=sq(qnorm(1-a)+qnorm(pw))*(pt*(1-pt)+pc*(1-pc))/sq(den);
+  var nl=Math.ceil(n/(1-l));
+  var sweep='';
+  [0.02,0.03,0.05,0.06,0.08,0.10].forEach(function(q){
+    var dd=pt-pc+q; var x=(dd>0)?sq(qnorm(1-a)+qnorm(pw))*(pt*(1-pt)+pc*(1-pc))/sq(dd):null;
+    sweep+='<tr'+(Math.abs(q-d)<1e-9?' class="hl"':'')+'><td>'+(q*100).toFixed(0)+' pts</td><td class="num">'+(x?Math.ceil(x/(1-l)).toLocaleString():'—')+'</td></tr>';
+  });
+  var opt=(pt>pc)?sq(qnorm(1-a)+qnorm(pw))*(pc*(1-pc)*2)/sq(d):null;
+  o.innerHTML='<div class="big">'+nl.toLocaleString()+' per arm · '+(nl*2).toLocaleString()+' total</div>'+
+   '<table><tr><th>Quantity</th><th>Value</th></tr>'+
+   '<tr><td>Formula requirement per arm</td><td class="num">'+Math.ceil(n).toLocaleString()+'</td></tr>'+
+   '<tr><td>After '+(l*100).toFixed(0)+'% loss</td><td class="num">'+nl.toLocaleString()+'</td></tr>'+
+   '<tr><td>Effective margin used</td><td class="num">'+den.toFixed(4)+'</td></tr>'+
+   '<tr><td>One-sided α</td><td class="num">'+a+'</td></tr></table>'+
+   (pt>pc?'<div class="note bad">You have assumed the new treatment is <b>better</b> than the control by '+((pt-pc)*100).toFixed(1)+' points. That assumption shrinks the trial substantially and it is very hard to defend — if you could defend it you would be running a superiority trial. Set p_T = p_C unless you have strong evidence.</div>':'')+
+   '<p style="font-size:.88rem;color:var(--ink2);margin:.6rem 0 .2rem"><b>What the margin costs:</b></p>'+
+   '<table><tr><th>Non-inferiority margin</th><th>Per arm (after loss)</th></tr>'+sweep+'</table>'+
+   '<p style="font-size:.87rem;color:var(--ink2)">Each row is a different scientific claim, not a different budget. A wider margin buys a smaller trial by accepting a weaker conclusion. Make that trade deliberately and justify δ against the control treatment&rsquo;s own historical benefit over placebo.</p>';
+});
+
+/* ===== M6 shared control ===== */
+wire(['ma_k','ma_n'],function(){
+  var K=Math.round(val('ma_k')),n=val('ma_n'),o=$('#ma_out'); if(!o) return;
+  if(!(K>=1&&n>1)){o.innerHTML='<span style="color:var(--ox)">Check the inputs.</span>';return;}
+  var sep=K*2*n;
+  var r=Math.sqrt(K);
+  /* per-comparison variance preserved: n_exp per arm, n_ctl = r*n_exp, with (1+1/r) factor */
+  var nExp=n*(1+1/r)/2, nCtl=r*nExp;
+  var plat=K*nExp+nCtl;
+  var eq=K*n+n; /* naive 1:1 shared control, underpowered per comparison */
+  var rows='';
+  for(var j=1;j<=Math.max(K,6)&&j<=8;j++){
+    var rr=Math.sqrt(j), ne=n*(1+1/rr)/2, nc=rr*ne;
+    rows+='<tr'+(j===K?' class="hl"':'')+'><td>'+j+'</td><td class="num">'+Math.ceil(ne)+'</td><td class="num">'+Math.ceil(nc)+'</td><td class="num">'+Math.ceil(j*ne+nc).toLocaleString()+'</td><td class="num">'+(j*2*n).toLocaleString()+'</td><td class="num">'+Math.round((1-(j*ne+nc)/(j*2*n))*100)+'%</td></tr>';
+  }
+  o.innerHTML='<div class="big">'+Math.ceil(plat).toLocaleString()+' vs '+sep.toLocaleString()+'</div>'+
+   '<p style="margin-top:.3rem">A platform with '+K+' experimental arms and a shared control needs about '+Math.ceil(plat).toLocaleString()+
+   ' participants to preserve the same power per comparison, against '+sep.toLocaleString()+' for '+K+
+   ' separate two-arm trials — a saving of roughly <b>'+Math.round((1-plat/sep)*100)+'%</b>.</p>'+
+   '<table><tr><th>Arms</th><th>Per experimental arm</th><th>Shared control</th><th>Platform total</th><th>Separate trials</th><th>Saving</th></tr>'+rows+'</table>'+
+   '<p style="font-size:.87rem;color:var(--ink2)">Control allocated in a ratio of &radic;K to each experimental arm, which is the standard optimal allocation when one control serves K comparisons. This is an efficiency calculation only — it says nothing about the multiplicity adjustment you will need across arms and stages, which is a separate and unavoidable cost.</p>';
+});
+
+/* ===== M7 adjustment stack ===== */
+wire(['ad_n','ad_l','ad_na','ad_di','ad_de','ad_m','ad_b','ad_rho'],function(){
+  var n=val('ad_n'),l=val('ad_l'),na=val('ad_na'),di=val('ad_di'),de=val('ad_de'),m=Math.round(val('ad_m')),bd=val('ad_b'),rho=val('ad_rho');
+  var o=$('#ad_out'); if(!o) return;
+  if(!(n>1)){o.innerHTML='<span style="color:var(--ox)">Check the inputs.</span>';return;}
+  var steps=[['Headline calculation',n]];
+  var cur=n;
+  if(rho>0){ cur=cur*(1-sq(rho)); steps.push(['× (1 − ρ²) ANCOVA saving, ρ = '+rho, cur]); }
+  if(m>1){ var f=sq(qnorm(1-0.05/m/2)+qnorm(0.8))/sq(qnorm(0.975)+qnorm(0.8)); cur=cur*f; steps.push(['× Bonferroni for '+m+' comparisons (α = '+(0.05/m).toFixed(4)+')', cur]); }
+  if(de>1){ cur=cur*de; steps.push(['× design effect '+de.toFixed(2), cur]); }
+  if(na>0||di>0){ var dil=sq(1/(1-na-di)); cur=cur*dil; steps.push(['× dilution from '+(na*100).toFixed(0)+'% non-adherence and '+(di*100).toFixed(0)+'% drop-in', cur]); }
+  if(bd>1){ cur=cur*bd; steps.push(['× interim boundary inflation', cur]); }
+  if(l>0){ cur=cur/(1-l); steps.push(['÷ ('+(1-l).toFixed(2)+') for loss to follow-up', cur]); }
+  var rows=steps.map(function(s,i){return '<tr'+(i===steps.length-1?' class="hl"':'')+'><td>'+s[0]+'</td><td class="num">'+Math.ceil(s[1]).toLocaleString()+'</td></tr>';}).join('');
+  o.innerHTML='<div class="big">'+Math.ceil(cur).toLocaleString()+' per arm</div>'+
+   '<p style="margin-top:.3rem">A factor of <b>'+(cur/n).toFixed(2)+'×</b> on the headline number.</p>'+
+   '<table><tr><th>Step</th><th>Running n per arm</th></tr>'+rows+'</table>'+
+   (na+di>0?'<div class="note">Non-adherence and drop-in are handled here by attenuating the effect and re-sizing — the 1/(1−a−b)² factor. This is the crude standard approach; it assumes the diluted effect is what intention-to-treat will estimate. If adherence is likely to be poor, that assumption deserves its own sentence in the protocol.</div>':'')+
+   (cur/n>2.5?'<div class="note bad">Your adjustments have more than doubled the trial. Each factor is individually defensible; stacked, they often make a study infeasible without anyone noticing until recruitment. Better to see it here than in year two.</div>':'');
+});
+</script>
+</body></html>

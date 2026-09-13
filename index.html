@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study design &amp; sample size — Raghavan Parthasarathy</title>
+<meta name="description" content="A working reference for epidemiological and clinical study design: cross-sectional, case-control, cohort, implementation research and clinical trials, with sample size methods, verified classic citations and interactive pitfall explorers.">
+<meta name="author" content="Raghavan Parthasarathy">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<div id="chrome"></div>
+
+<div class="shell">
+
+  <div class="hero">
+    <span class="kicker">A working reference, not a textbook</span>
+    <h1>Study design and sample size</h1>
+    <p class="sub">Every formula shown with its derivation, every classic citation checked at build time, and every pitfall built as something you can drag until you see what it does to your answer.</p>
+  </div>
+
+  <div class="cards">
+    <a class="card2" href="observational.html">
+      <h3>Observational designs</h3>
+      <p>Cross-sectional, case–control, cohort and implementation research. What each design can and cannot estimate, how the sample size follows from that, and where the design breaks.</p>
+      <ul>
+        <li>Prevalence surveys, design effects and the Wald interval's failure at the extremes</li>
+        <li>The three control-sampling schemes and what each odds ratio actually means</li>
+        <li>Cohort sizing by cumulative incidence, person-time, events and events-per-variable</li>
+        <li>Hybrid effectiveness–implementation, interrupted time series, difference-in-differences</li>
+      </ul>
+      <div class="cnt">7 tabs · 10 calculators · 9 explorers · 65 sources</div>
+    </a>
+    <a class="card2" href="trials.html">
+      <h3>Clinical trials</h3>
+      <p>From the 1948 streptomycin trial to platform designs. Parallel, cluster, stepped wedge, crossover, factorial, non-inferiority, sequential and adaptive — with eight case studies of trials that changed practice.</p>
+      <ul>
+        <li>Stepped wedge in depth: the model, every assumption it makes, and what breaks it</li>
+        <li>Why survival trials are counted in events and not in patients</li>
+        <li>Analysis plans, estimands, and rigour requirements design by design</li>
+        <li>Case studies across drugs, devices and viral and bacterial vaccines</li>
+      </ul>
+      <div class="cnt">9 tabs · 6 calculators · 7 explorers · 43 sources</div>
+    </a>
+  </div>
+
+  <a class="card2" href="toolkit.html" style="border-top-color:var(--sea);display:block">
+    <h3>The pitfall lab</h3>
+    <p>Every interactive explorer on the site, gathered in one place. Fourteen mechanisms that quietly wreck studies — misclassification, immortal time, differential attrition, secular trend in a stepped wedge, repeated peeking at the data — each one reduced to a slider and a curve.</p>
+    <div class="cnt">14 explorers · all in one page</div>
+  </a>
+
+  <section style="margin-top:1.8rem">
+    <h2>How to use this</h2>
+    <p>It is arranged as two sites of tabbed modules, because study design is not read linearly — you arrive needing one design and you want everything about it in one place. Pick a tab and it holds the concept, the algebra, the assumptions, a worked example, the calculator, the pitfalls and the sources for that design alone.</p>
+
+    <h3>Three things it does differently</h3>
+    <table>
+      <tr><th>What</th><th>Why</th></tr>
+      <tr><td><b>The derivations are visible, and switchable</b></td><td>A <em>Derivations</em> toggle in the header hides or reveals the provenance blocks. Formulae are easier to trust and much easier to remember when you have once seen where they came from — but not everyone wants them on every visit.</td></tr>
+      <tr><td><b>Pitfalls are interactive, not listed</b></td><td>"Non-differential misclassification biases towards the null" is a sentence people nod at and forget. Dragging sensitivity from 100% to 80% and watching an odds ratio of 2.5 collapse to 2.07 is harder to forget, and tells you how much sample size it will cost.</td></tr>
+      <tr><td><b>No invented page numbers</b></td><td>Journal citations marked <span class="pill ok">verified</span> had their authors, year, journal, volume and page range checked against PubMed, the publisher or an indexing service at build time. Books are marked <span class="pill check">check</span> and carry no page numbers, because pagination moves between editions. Every reference has a blank locator box to fill from your own copy, and an export button.</td></tr>
+    </table>
+
+    <h3>Two corrections worth knowing about</h3>
+    <p>Both are live in the published literature and both are handled correctly here.</p>
+    <ol>
+      <li><b>The interrupted time series tutorial equation.</b> The 2017 <em>IJE</em> tutorial by Lopez Bernal, Cummins and Gasparrini contained an algebraic definition of the regression model that could lead to erroneous interpretation of the parameters. A corrigendum in 2020 gives the correct form. If you learned interrupted time series from the original before 2020, check which version your code implements.</li>
+      <li><b>Matching does not save sample size.</b> It usually costs it, because a matched analysis discards every concordant pair. The explorer on the case–control tab shows the price directly and validates at &phi; = 0 against the unmatched requirement.</li>
+    </ol>
+
+    <h3>What is deliberately absent</h3>
+    <p>Prediction model sample size, bioequivalence, phase I and dose-finding, N-of-1 designs, SMART designs beyond a mention, and simulation-based power for non-proportional hazards. Each needs real methods rather than a closed form, and a page that pretended otherwise would be worse than one that says so.</p>
+
+    <div class="note">Everything here is a design aid. On a complex or high-stakes study it does not replace sitting down with a statistician — it makes that conversation a great deal shorter.</div>
+  </section>
+
+</div>
+<div id="author"></div>
+<script src="assets/core.js"></script>
+<script>
+document.getElementById('chrome').innerHTML=chrome('home');
+document.getElementById('author').innerHTML=authorBlock();
+initChrome();
+var d=document.getElementById('depthBtn'); if(d) d.style.display='none';
+</script>
+</body></html>
