@@ -51,7 +51,7 @@ function twoProp(p1,p2,k,alpha,power,cc){
 var AUTHOR={
   name:"Raghavan Parthasarathy",
   creds:"MBBS, MD (Community Medicine), DNB (Community Medicine)",
-  roles:"Public health specialist",
+  roles:["Public health specialist"],
   orcid:"0000-0001-6173-2238",
   linkedin:"https://www.linkedin.com/in/raghavan-parthasarathy-2786a9b9/"
 };
