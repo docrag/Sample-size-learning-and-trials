@@ -50,11 +50,9 @@ function twoProp(p1,p2,k,alpha,power,cc){
    ============================================================ */
 var AUTHOR={
   name:"Raghavan Parthasarathy",
-  creds:"MBBS",
-  roles:["Research Scholar, Koita Centre for Digital Health (KCDH), IIT Bombay",
-         "Project Research Scientist, National Disease Modelling Consortium (NDMC), IIT Bombay"],
+  creds:"MBBS, MD (Community Medicine), DNB (Community Medicine)",
   orcid:"0000-0001-6173-2238",
-  linkedin:"https://www.linkedin.com/in/REPLACE-WITH-YOUR-HANDLE"
+  linkedin:"https://www.linkedin.com/in/raghavan-parthasarathy-2786a9b9/"
 };
 function authorBlock(){
   var oc='https://orcid.org/'+AUTHOR.orcid;
